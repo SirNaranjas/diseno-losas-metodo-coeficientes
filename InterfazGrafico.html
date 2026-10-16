@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diseño de Hormigón Armado 2</title>
+    
+    <style>
+        :root {
+            --bg-color:#0f1318; --panel-color:#171c23; --panel2:#1e252e; --raised:#252d38;
+            --text-color:#e8ecf1; --muted:#8b97a7; --accent-color:#e0b13a; --accent-soft:rgba(224,177,58,.12);
+            --danger-color:#e5534b; --node-color:#ef4444; --border-color:#2c3542; --grid-color:#262e39; --axis-color:#5b6778;
+            --radius:10px; --shadow:0 4px 18px rgba(0,0,0,.35);
+        }
+        * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter','Segoe UI',system-ui,-apple-system,Roboto,sans-serif; }
+        ::-webkit-scrollbar { width:10px; height:10px; } ::-webkit-scrollbar-thumb { background:#2f3947; border-radius:8px; } ::-webkit-scrollbar-track { background:transparent; }
+
+        body { background:var(--bg-color); color:var(--text-color); padding:18px; height:100vh; overflow:hidden; font-size:.9rem; }
+        h2 { color:var(--text-color); margin-bottom:14px; font-size:1.2rem; font-weight:700; display:flex; align-items:center; gap:10px; }
+        h2::before { content:''; width:4px; height:20px; background:var(--accent-color); border-radius:3px; }
+        h3 { font-size:.82rem; text-transform:uppercase; letter-spacing:.8px; color:var(--accent-color); margin-bottom:10px; font-weight:700; }
+        .layout-principal { display:flex; gap:16px; width:100%; height:calc(100vh - 62px); }
+        .columna-grafico { flex:2; background:var(--panel-color); border-radius:var(--radius); border:1px solid var(--border-color); display:flex; flex-direction:column; height:100%; overflow:hidden; box-shadow:var(--shadow); }
+        .columna-controles { flex:1; display:flex; flex-direction:column; gap:16px; height:100%; overflow-y:auto; padding-right:4px; }
+        .panel { background:var(--panel-color); padding:16px; border-radius:var(--radius); border:1px solid var(--border-color); box-shadow:var(--shadow); }
+        #contenedor-canvas { flex:1; position:relative; width:100%; height:100%; overflow:hidden; display:flex; flex-direction:column; }
+        canvas { background:#0b0f14; display:block; width:100%; height:100%; cursor:crosshair; }
+        .canvas-overlay-left { position:absolute; top:14px; left:14px; display:flex; gap:8px; z-index:10; }
+        .canvas-overlay-right { position:absolute; top:14px; right:14px; display:flex; gap:8px; z-index:10; }
+        .btn-overlay { background:rgba(23,28,35,.88); backdrop-filter:blur(6px); border:1px solid var(--border-color); color:#c3ccd8; padding:7px 12px; border-radius:7px; cursor:pointer; font-size:.8rem; font-weight:500; transition:.15s; }
+        .btn-overlay:hover { background:var(--raised); color:#fff; }
+        .btn-overlay.activo { background:var(--accent-color); color:#1a1405; font-weight:700; border-color:var(--accent-color); }
+        .btn-encuadre { background:var(--accent-color); color:#1a1405; font-weight:700; border-color:var(--accent-color); }
+        .btn-encuadre:hover { background:#f0c24d; color:#1a1405; }
+        .btn-herramienta-cuadrado { width:38px; height:38px; background:rgba(23,28,35,.88); backdrop-filter:blur(6px); border:1px solid var(--border-color); border-radius:8px; cursor:pointer; display:flex; justify-content:center; align-items:center; transition:.15s; }
+        .btn-herramienta-cuadrado:hover { background:var(--raised); }
+        .btn-herramienta-cuadrado.activo { background:var(--accent-color); border-color:var(--accent-color); }
+        .btn-herramienta-cuadrado.activo svg { stroke:#1a1405; fill:#1a1405; }
+        #menu-contextual { position:absolute; background:var(--panel-color); border:1px solid var(--accent-color); border-radius:10px; padding:6px; display:none; flex-direction:row; gap:6px; box-shadow:0 8px 24px rgba(0,0,0,.55); z-index:100; }
+        .btn-simbolo { background:var(--bg-color); border:1px solid var(--border-color); color:white; width:42px; height:42px; border-radius:7px; cursor:pointer; display:flex; justify-content:center; align-items:center; transition:.15s; }
+        .btn-simbolo:hover { background:var(--node-color); border-color:var(--node-color); color:#fff; }
+        .btn-simbolo svg { width:24px; height:24px; stroke:currentColor; fill:transparent; stroke-width:2; }
+        .lista-items { font-size:.84rem; max-height:350px; overflow-y:auto; }
+        .item-agregado { background:var(--bg-color); padding:9px 11px; margin-bottom:6px; border-radius:7px; display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border-color); border-left:3px solid transparent; transition:.15s; cursor:pointer; }
+        .item-agregado:hover { background:var(--panel2); }
+        .item-agregado.seleccionado { border-left-color:var(--accent-color); background:var(--accent-soft); }
+        .lista-items > em { color:var(--muted); }
+        .btn-eliminar { background:transparent; color:var(--danger-color); border:1px solid rgba(229,83,75,.5); padding:3px 9px; border-radius:6px; cursor:pointer; font-size:.78rem; font-weight:600; transition:.15s; }
+        .btn-eliminar:hover { background:var(--danger-color); color:#fff; }
+    </style>
+</head>
+<body oncontextmenu="return true;">
+
+    <h2>Entorno gráfico</h2>
+
+    <div class="layout-principal">
+        <div class="columna-grafico">
+            <div id="contenedor-canvas">
+                <div class="canvas-overlay-left">
+                    <button class="btn-overlay btn-encuadre" onclick="encuadrarEstructura()" title="Centrar estructura (Tecla F)">Encuadre</button>
+                    <button class="btn-overlay activo" id="btn-toggle-grilla" onclick="toggleVisibilidad('grilla')">Grilla</button>
+                    <button class="btn-overlay activo" id="btn-toggle-ejes" onclick="toggleVisibilidad('ejes')">Ejes X/Y</button>
+                </div>
+
+                <div class="canvas-overlay-right">
+                    <button class="btn-herramienta-cuadrado activo" id="btn-modo-viga" onclick="setModo('viga')" title="Dibujar Vigas">
+                        <svg width="20" height="20" viewBox="0 0 24 24" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="20" x2="20" y2="4"/></svg>
+                    </button>
+                    <button class="btn-herramienta-cuadrado" id="btn-modo-nodo" onclick="setModo('nodo')" title="Asignar Nodo">
+                        <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#ffffff" stroke="none"/></svg>
+                    </button>
+                </div>
+
+                <canvas id="lienzo"></canvas>
+                
+                <div id="menu-contextual">
+                    <button class="btn-simbolo" title="Nodo Libre" onclick="asignarTipoApoyo(0)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg></button>
+                    <button class="btn-simbolo" title="Apoyo Simple" onclick="asignarTipoApoyo(1)"><svg viewBox="0 0 24 24"><circle cx="12" cy="10" r="5"/><line x1="4" y1="18" x2="20" y2="18"/></svg></button>
+                    <button class="btn-simbolo" title="Apoyo Articulado" onclick="asignarTipoApoyo(2)"><svg viewBox="0 0 24 24"><polygon points="12,4 4,18 20,18"/></svg></button>
+                    <button class="btn-simbolo" title="Apoyo Empotrado" onclick="asignarTipoApoyo(3)"><svg viewBox="0 0 24 24"><line x1="2" y1="6" x2="22" y2="6"/><line x1="4" y1="6" x2="0" y2="12"/><line x1="10" y1="6" x2="6" y2="12"/><line x1="16" y1="6" x2="12" y2="12"/><line x1="22" y1="6" x2="18" y2="12"/></svg></button>
+                </div>
+            </div>
+            <div id="ayuda-viga" style="display: none; background: #e0b13a; color: black; text-align: center; font-size: 0.85rem; padding: 3px; font-weight: bold;">
+                Primer nodo seleccionado. Selecciona el segundo nodo para trazar la viga (ESC para cancelar).
+            </div>
+            <div id="alerta-error" style="display: none; background: #ff4d4d; color: white; text-align: center; font-size: 0.85rem; padding: 3px;">
+                Debes iniciar la viga seleccionando un nodo existente.
+            </div>
+            <div style="background: var(--bg-color); padding: 5px; text-align: center; color: #888; font-size: 0.8rem; border-top: 1px solid var(--border-color);">
+                <strong>Clic Izquierdo:</strong> Seleccionar | <strong>Ctrl + Clic:</strong> Sumar | <strong>Der + Arrastrar:</strong> Selección múltiple | <strong>Supr:</strong> Borrar
+            </div>
+        </div>
+
+        <div class="columna-controles">
+            <div class="panel">
+                <h3>Vigas (Tramos)</h3>
+                <div id="lista-vigas" class="lista-items"><em>No hay vigas.</em></div>
+            </div>
+            <div class="panel">
+                <h3>Nodos y Apoyos</h3>
+                <div id="lista-nodos" class="lista-items"><em>No hay nodos.</em></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let nodos = []; 
+    let vigas = []; 
+    let seleccion = { nodos: new Set(), vigas: new Set() };
+    let historial = [];
+
+    function guardarEstado() {
+        historial.push({
+            nodos: JSON.parse(JSON.stringify(nodos)),
+            vigas: JSON.parse(JSON.stringify(vigas))
+        });
+        if (historial.length > 50) historial.shift(); 
+    }
+
+    function deshacer() {
+        if (historial.length > 0) {
+            let estadoAnterior = historial.pop();
+            nodos = estadoAnterior.nodos;
+            vigas = estadoAnterior.vigas.map(v => ({
+                id: v.id, label: v.label,
+                n1: nodos.find(n => n.id === v.n1.id),
+                n2: nodos.find(n => n.id === v.n2.id)
+            }));
+            seleccion.nodos.clear(); seleccion.vigas.clear();
+            nodoInicioViga = null;
+            document.getElementById('ayuda-viga').style.display = 'none';
+            actualizarUI();
+        }
+    }
+
+    let mostrarGrilla = true;
+    let mostrarEjes = true;
+    const contenedor = document.getElementById('contenedor-canvas');
+    const canvas = document.getElementById('lienzo');
+    const ctx = canvas.getContext('2d');
+    let camera = { x: 0, y: 0, zoom: 50 }; 
+    const GRID_STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
+    let currentGridStep = 1;
+
+    function resizeCanvas() { canvas.width = contenedor.clientWidth; canvas.height = contenedor.clientHeight; dibujarCanvas(); }
+    window.addEventListener('resize', resizeCanvas);
+
+    let modoActual = 'viga'; 
+    let isPanning = false, dragStart = null, dragCurrent = null;
+    let hoveredNode = null, hoveredViga = null, nodoInicioViga = null; 
+    let isSelectingBox = false, selectionBoxStart = null, selectionBoxCurrent = null, rightClickMoved = false;
+    const menuContextual = document.getElementById('menu-contextual');
+    let nodoPendienteCoords = null; 
+
+    function toWorld(sx, sy) { return { x: (sx - canvas.width / 2) / camera.zoom + camera.x, y: -(sy - canvas.height / 2) / camera.zoom + camera.y }; }
+    function toScreen(wx, wy) { return { x: (wx - camera.x) * camera.zoom + canvas.width / 2, y: -(wy - camera.y) * camera.zoom + canvas.height / 2 }; }
+    
+    function actualizarPasoGrilla() {
+        for (let step of GRID_STEPS) { if (step * camera.zoom >= 40) { currentGridStep = step; return; } }
+    }
+    function snap(value) { return Math.round(value / currentGridStep) * currentGridStep; }
+
+    window.encuadrarEstructura = function() {
+        if (nodos.length === 0) return;
+        let minX = Math.min(...nodos.map(n => n.x)), maxX = Math.max(...nodos.map(n => n.x));
+        let minY = Math.min(...nodos.map(n => n.y)), maxY = Math.max(...nodos.map(n => n.y));
+        camera.x = (minX + maxX) / 2; camera.y = (minY + maxY) / 2;
+        let anchoMundo = (maxX - minX) || 2, altoMundo = (maxY - minY) || 2;
+        let zoomX = (canvas.width - 100) / anchoMundo, zoomY = (canvas.height - 100) / altoMundo;
+        camera.zoom = Math.max(10, Math.min(Math.min(zoomX, zoomY), 500));
+        dibujarCanvas();
+    }
+
+    function obtenerSiguienteIdNodo() {
+        let ids = nodos.map(n => n.id).sort((a,b) => a-b);
+        let next = 0; for(let id of ids) { if(id === next) next++; } return next;
+    }
+    function obtenerSiguienteIdViga() {
+        let ids = vigas.map(v => v.id).sort((a,b) => a-b);
+        let next = 0; for(let id of ids) { if(id === next) next++; } return next;
+    }
+
+    function obtenerCrearNodo(x, y) {
+        let nodoExistente = nodos.find(n => Math.abs(n.x - x) < 0.01 && Math.abs(n.y - y) < 0.01);
+        if (nodoExistente) return nodoExistente;
+        let idAsignado = obtenerSiguienteIdNodo();
+        let nuevoNodo = { id: idAsignado, label: `N${idAsignado}`, x: x, y: y, apoyo: 0 };
+        nodos.push(nuevoNodo); return nuevoNodo;
+    }
+
+    function crearViga(x1, y1, x2, y2) {
+        if (x1 === x2 && y1 === y2) return; 
+        guardarEstado(); 
+        let n1 = obtenerCrearNodo(x1, y1), n2 = obtenerCrearNodo(x2, y2);
+        if (!vigas.some(v => (v.n1.id === n1.id && v.n2.id === n2.id) || (v.n1.id === n2.id && v.n2.id === n1.id))) {
+            let idAsignado = obtenerSiguienteIdViga();
+            vigas.push({ id: idAsignado, label: `V${idAsignado}`, n1: n1, n2: n2 });
+        }
+        actualizarUI();
+    }
+
+    window.eliminarViga = function(id) { guardarEstado(); vigas = vigas.filter(v => v.id !== id); seleccion.vigas.delete(id); actualizarUI(); }
+    window.eliminarNodo = function(id) { guardarEstado(); nodos = nodos.filter(n => n.id !== id); vigas = vigas.filter(v => v.n1.id !== id && v.n2.id !== id); seleccion.nodos.delete(id); actualizarUI(); }
+
+    function mostrarErrorTemporal() {
+        let alertBox = document.getElementById('alerta-error'); alertBox.style.display = 'block';
+        setTimeout(() => alertBox.style.display = 'none', 2000);
+    }
+
+    window.toggleVisibilidad = function(elemento) {
+        if (elemento === 'grilla') { mostrarGrilla = !mostrarGrilla; document.getElementById('btn-toggle-grilla').classList.toggle('activo', mostrarGrilla); }
+        else if (elemento === 'ejes') { mostrarEjes = !mostrarEjes; document.getElementById('btn-toggle-ejes').classList.toggle('activo', mostrarEjes); }
+        dibujarCanvas();
+    }
+
+    function dibujarCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        actualizarPasoGrilla();
+
+        let topLeft = toWorld(0, 0), bottomRight = toWorld(canvas.width, canvas.height);
+        let startX = Math.floor(topLeft.x / currentGridStep) * currentGridStep;
+        let endX = Math.ceil(bottomRight.x / currentGridStep) * currentGridStep;
+        let startY = Math.floor(bottomRight.y / currentGridStep) * currentGridStep;
+        let endY = Math.ceil(topLeft.y / currentGridStep) * currentGridStep;
+
+        if (mostrarGrilla) {
+            ctx.save(); ctx.beginPath(); ctx.lineWidth = 1; ctx.strokeStyle = '#262e39';
+            for (let x = startX; x <= endX; x += currentGridStep) { let sx = toScreen(x, 0).x; ctx.moveTo(sx, 0); ctx.lineTo(sx, canvas.height); }
+            for (let y = startY; y <= endY; y += currentGridStep) { let sy = toScreen(0, y).y; ctx.moveTo(0, sy); ctx.lineTo(canvas.width, sy); }
+            ctx.stroke(); ctx.restore();
+        }
+
+        if (mostrarEjes) {
+            ctx.save(); let origin = toScreen(0, 0); ctx.fillStyle = '#aaaaaa'; ctx.font = '10px Arial'; ctx.textAlign = 'center';
+            ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = '#5b6778';
+            ctx.moveTo(0, origin.y); ctx.lineTo(canvas.width, origin.y);
+            for (let x = startX; x <= endX; x += currentGridStep) {
+                if (Math.abs(x) < 0.01) continue; let sx = toScreen(x, 0).x;
+                ctx.moveTo(sx, origin.y - 4); ctx.lineTo(sx, origin.y + 4); ctx.fillText(parseFloat(x.toFixed(2)).toString(), sx, origin.y + 15);
+            }
+            ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, canvas.height); ctx.textAlign = 'right';
+            for (let y = startY; y <= endY; y += currentGridStep) {
+                if (Math.abs(y) < 0.01) continue; let sy = toScreen(0, y).y;
+                ctx.moveTo(origin.x - 4, sy); ctx.lineTo(origin.x + 4, sy); ctx.fillText(parseFloat(y.toFixed(2)).toString(), origin.x - 8, sy + 4);
+            }
+            ctx.stroke(); ctx.restore();
+        }
+
+        ctx.save();
+        vigas.forEach(viga => {
+            let p1 = toScreen(viga.n1.x, viga.n1.y), p2 = toScreen(viga.n2.x, viga.n2.y);
+            let isSelected = seleccion.vigas.has(viga.id);
+            if (isSelected) {
+                ctx.beginPath(); ctx.lineWidth = 8; ctx.strokeStyle = '#e0b13a';
+                ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+            }
+            ctx.beginPath(); ctx.lineWidth = 4; ctx.strokeStyle = (viga === hoveredViga && !isSelected) ? '#aaaaaa' : '#ffffff';
+            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+            let midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+            ctx.fillStyle = isSelected ? '#e0b13a' : '#aaaaaa'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(viga.label, midX, midY - 10);
+        });
+        ctx.restore();
+
+        if (modoActual === 'viga' && nodoInicioViga && dragCurrent) {
+            ctx.save();
+            let p1 = toScreen(nodoInicioViga.x, nodoInicioViga.y);
+            let targetPoint = hoveredNode ? { x: hoveredNode.x, y: hoveredNode.y } : dragCurrent;
+            let p2 = toScreen(targetPoint.x, targetPoint.y);
+            ctx.beginPath(); ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); ctx.restore();
+        }
+
+        ctx.save();
+        nodos.forEach(nodo => {
+            let pos = toScreen(nodo.x, nodo.y);
+            let isSelected = seleccion.nodos.has(nodo.id);
+            let isHovered = (hoveredNode && hoveredNode.id === nodo.id);
+            let isInicioViga = (nodoInicioViga && nodoInicioViga.id === nodo.id);
+            
+            if (isSelected || isInicioViga || isHovered) {
+                ctx.beginPath(); ctx.arc(pos.x, pos.y, 11, 0, Math.PI * 2); 
+                ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+            }
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2); ctx.fillStyle = '#ff0000'; ctx.fill();
+
+            ctx.save(); ctx.translate(pos.x, pos.y); ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = '#ff0000'; 
+            if (nodo.apoyo === 1) { ctx.arc(0, 12, 5, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-7.5, 17); ctx.lineTo(7.5, 17); ctx.stroke(); }
+            else if (nodo.apoyo === 2) { ctx.moveTo(0, 6); ctx.lineTo(-7.5, 17); ctx.lineTo(7.5, 17); ctx.closePath(); ctx.stroke(); }
+            else if (nodo.apoyo === 3) { ctx.moveTo(0, 6); ctx.lineTo(0, 12); ctx.moveTo(-10, 12); ctx.lineTo(10, 12); ctx.stroke(); }
+            ctx.restore(); 
+
+            let vecX = 0, vecY = 0, count = 0;
+            vigas.forEach(v => {
+                if (v.n1.id === nodo.id) { vecX += (v.n2.x - nodo.x); vecY += (v.n2.y - nodo.y); count++; }
+                else if (v.n2.id === nodo.id) { vecX += (v.n1.x - nodo.x); vecY += (v.n1.y - nodo.y); count++; }
+            });
+            let offsetX = -10, offsetY = -15; 
+            if (count > 0) {
+                let norm = Math.hypot(vecX, vecY);
+                if (norm > 0.01) { offsetX = -(vecX / norm) * 20 - 5; offsetY = (vecY / norm) * 20 - 5; } else { offsetY = -25; }
+            }
+            ctx.fillStyle = isSelected ? '#e0b13a' : '#ffffff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left';
+            ctx.fillText(nodo.label, pos.x + offsetX, pos.y + offsetY);
+        });
+        ctx.restore();
+
+        if (isSelectingBox && selectionBoxStart && selectionBoxCurrent) {
+            ctx.save();
+            let x = Math.min(selectionBoxStart.x, selectionBoxCurrent.x), y = Math.min(selectionBoxStart.y, selectionBoxCurrent.y);
+            let w = Math.abs(selectionBoxCurrent.x - selectionBoxStart.x), h = Math.abs(selectionBoxCurrent.y - selectionBoxStart.y);
+            ctx.fillStyle = 'rgba(224, 177, 58, 0.15)'; ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = 'rgba(224, 177, 58, 0.8)'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+            ctx.restore();
+        }
+    }
+
+    canvas.addEventListener('contextmenu', (e) => { if (rightClickMoved) e.preventDefault(); });
+
+    canvas.addEventListener('mousedown', (e) => {
+        let rect = canvas.getBoundingClientRect();
+        let mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+        let worldPos = toWorld(mouseX, mouseY);
+        let snappedWorld = { x: snap(worldPos.x), y: snap(worldPos.y) };
+
+        if (e.button === 1) {
+            e.preventDefault(); isPanning = true;
+            dragStart = { x: mouseX, y: mouseY, camX: camera.x, camY: camera.y };
+            canvas.style.cursor = 'grabbing'; return;
+        } 
+        if (e.button === 2) {
+            rightClickMoved = false; isSelectingBox = true;
+            selectionBoxStart = { x: mouseX, y: mouseY }; selectionBoxCurrent = { x: mouseX, y: mouseY };
+            if (!e.ctrlKey) { seleccion.nodos.clear(); seleccion.vigas.clear(); }
+            actualizarUI(); return;
+        }
+
+        if (e.button === 0) {
+            menuContextual.style.display = 'none';
+            let clickedNode = nodos.find(n => Math.hypot(toScreen(n.x, n.y).x - mouseX, toScreen(n.x, n.y).y - mouseY) < 20);
+            let clickedViga = null;
+
+            if (!clickedNode) {
+                clickedViga = vigas.find(v => {
+                    let l2 = Math.pow(v.n1.x - v.n2.x, 2) + Math.pow(v.n1.y - v.n2.y, 2);
+                    if (l2 === 0) return false;
+                    let t = ((worldPos.x - v.n1.x) * (v.n2.x - v.n1.x) + (worldPos.y - v.n1.y) * (v.n2.y - v.n1.y)) / l2;
+                    t = Math.max(0, Math.min(1, t));
+                    return Math.hypot(worldPos.x - (v.n1.x + t * (v.n2.x - v.n1.x)), worldPos.y - (v.n1.y + t * (v.n2.y - v.n1.y))) * camera.zoom < 8;
+                });
+            }
+
+            if (e.ctrlKey) {
+                nodoInicioViga = null; document.getElementById('ayuda-viga').style.display = 'none';
+                if (clickedNode) { if (seleccion.nodos.has(clickedNode.id)) seleccion.nodos.delete(clickedNode.id); else seleccion.nodos.add(clickedNode.id); }
+                else if (clickedViga) { if (seleccion.vigas.has(clickedViga.id)) seleccion.vigas.delete(clickedViga.id); else seleccion.vigas.add(clickedViga.id); }
+                actualizarUI(); return;
+            }
+
+            if (modoActual === 'viga') {
+                if (clickedNode) {
+                    if (!nodoInicioViga) { nodoInicioViga = clickedNode; document.getElementById('ayuda-viga').style.display = 'block'; }
+                    else {
+                        if (nodoInicioViga.id !== clickedNode.id) crearViga(nodoInicioViga.x, nodoInicioViga.y, clickedNode.x, clickedNode.y);
+                        nodoInicioViga = null; document.getElementById('ayuda-viga').style.display = 'none';
+                    }
+                } else {
+                    if (nodoInicioViga) mostrarErrorTemporal();
+                    else { seleccion.nodos.clear(); seleccion.vigas.clear(); if (clickedViga) seleccion.vigas.add(clickedViga.id); }
+                }
+                actualizarUI();
+            } else if (modoActual === 'nodo') {
+                if (clickedNode && seleccion.nodos.size <= 1) {
+                    nodoPendienteCoords = {x: clickedNode.x, y: clickedNode.y};
+                    menuContextual.style.left = `${mouseX + 10}px`; menuContextual.style.top = `${mouseY + 10}px`; menuContextual.style.display = 'flex';
+                } else {
+                    if (clickedNode) { seleccion.nodos.clear(); seleccion.vigas.clear(); seleccion.nodos.add(clickedNode.id); actualizarUI(); }
+                    else {
+                        nodoPendienteCoords = clickedNode ? {x: clickedNode.x, y: clickedNode.y} : (hoveredNode ? {x: hoveredNode.x, y: hoveredNode.y} : snappedWorld);
+                        menuContextual.style.left = `${mouseX + 10}px`; menuContextual.style.top = `${mouseY + 10}px`; menuContextual.style.display = 'flex';
+                    }
+                }
+            }
+        }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        let rect = canvas.getBoundingClientRect();
+        let mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
+        let worldPos = toWorld(mouseX, mouseY);
+        dragCurrent = { x: snap(worldPos.x), y: snap(worldPos.y) };
+
+        if (isPanning) {
+            camera.x = dragStart.camX - (mouseX - dragStart.x) / camera.zoom;
+            camera.y = dragStart.camY + (mouseY - dragStart.y) / camera.zoom;
+            dibujarCanvas(); return;
+        }
+        if (isSelectingBox) {
+            if (Math.abs(mouseX - selectionBoxStart.x) > 3 || Math.abs(mouseY - selectionBoxStart.y) > 3) rightClickMoved = true;
+            selectionBoxCurrent = { x: mouseX, y: mouseY }; dibujarCanvas(); return;
+        }
+
+        hoveredNode = nodos.find(n => Math.hypot(toScreen(n.x, n.y).x - mouseX, toScreen(n.x, n.y).y - mouseY) < 20);
+        hoveredViga = null;
+        if (!hoveredNode) {
+            hoveredViga = vigas.find(v => {
+                let l2 = Math.pow(v.n1.x - v.n2.x, 2) + Math.pow(v.n1.y - v.n2.y, 2);
+                if (l2 === 0) return false;
+                let t = ((worldPos.x - v.n1.x) * (v.n2.x - v.n1.x) + (worldPos.y - v.n1.y) * (v.n2.y - v.n1.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                return Math.hypot(worldPos.x - (v.n1.x + t * (v.n2.x - v.n1.x)), worldPos.y - (v.n1.y + t * (v.n2.y - v.n1.y))) * camera.zoom < 8;
+            });
+        }
+        dibujarCanvas();
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+        if (isPanning && e.button === 1) { isPanning = false; canvas.style.cursor = 'crosshair'; }
+        if (isSelectingBox && e.button === 2) {
+            isSelectingBox = false;
+            let startWorld = toWorld(selectionBoxStart.x, selectionBoxStart.y), endWorld = toWorld(selectionBoxCurrent.x, selectionBoxCurrent.y);
+            let minW = { x: Math.min(startWorld.x, endWorld.x), y: Math.min(startWorld.y, endWorld.y) };
+            let maxW = { x: Math.max(startWorld.x, endWorld.x), y: Math.max(startWorld.y, endWorld.y) };
+
+            if (Math.abs(maxW.x - minW.x) > 0.05 || Math.abs(maxW.y - minW.y) > 0.05) {
+                nodos.forEach(n => { if (n.x >= minW.x && n.x <= maxW.x && n.y >= minW.y && n.y <= maxW.y) seleccion.nodos.add(n.id); });
+                vigas.forEach(v => {
+                    if (v.n1.x >= minW.x && v.n1.x <= maxW.x && v.n1.y >= minW.y && v.n1.y <= maxW.y &&
+                        v.n2.x >= minW.x && v.n2.x <= maxW.x && v.n2.y >= minW.y && v.n2.y <= maxW.y) seleccion.vigas.add(v.id);
+                });
+            }
+            actualizarUI();
+        }
+        dibujarCanvas();
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault(); let factor = e.deltaY < 0 ? 1.1 : 0.9;
+        let rect = canvas.getBoundingClientRect(), worldBefore = toWorld(e.clientX - rect.left, e.clientY - rect.top);
+        camera.zoom = Math.max(10, Math.min(camera.zoom * factor, 500));
+        let worldAfter = toWorld(e.clientX - rect.left, e.clientY - rect.top);
+        camera.x += (worldBefore.x - worldAfter.x); camera.y += (worldBefore.y - worldAfter.y);
+        dibujarCanvas();
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); deshacer(); return; }
+        if (e.key === 'f' || e.key === 'F') { if (!['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) encuadrarEstructura(); }
+        if (e.key === 'Escape') {
+            if (nodoInicioViga) { nodoInicioViga = null; document.getElementById('ayuda-viga').style.display = 'none'; }
+            seleccion.nodos.clear(); seleccion.vigas.clear(); menuContextual.style.display = 'none'; nodoPendienteCoords = null; actualizarUI();
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+            if (seleccion.nodos.size > 0 || seleccion.vigas.size > 0) {
+                guardarEstado(); 
+                vigas = vigas.filter(v => !seleccion.vigas.has(v.id) && !seleccion.nodos.has(v.n1.id) && !seleccion.nodos.has(v.n2.id));
+                nodos = nodos.filter(n => !seleccion.nodos.has(n.id));
+                seleccion.nodos.clear(); seleccion.vigas.clear(); actualizarUI();
+            }
+        }
+    });
+
+    window.setModo = function(modo) {
+        modoActual = modo;
+        document.getElementById('btn-modo-viga').classList.toggle('activo', modo === 'viga');
+        document.getElementById('btn-modo-nodo').classList.toggle('activo', modo === 'nodo');
+        menuContextual.style.display = 'none'; seleccion.nodos.clear(); seleccion.vigas.clear();
+        nodoInicioViga = null; document.getElementById('ayuda-viga').style.display = 'none'; actualizarUI();
+    }
+
+    window.asignarTipoApoyo = function(tipo) {
+        let coordsDestino = hoveredNode ? { x: hoveredNode.x, y: hoveredNode.y } : nodoPendienteCoords;
+        if (coordsDestino) {
+            guardarEstado(); let nodo = obtenerCrearNodo(coordsDestino.x, coordsDestino.y);
+            nodo.apoyo = tipo; actualizarUI();
+        }
+        menuContextual.style.display = 'none'; nodoPendienteCoords = null;
+    }
+
+    function actualizarUI() {
+        let listVigas = document.getElementById('lista-vigas');
+        listVigas.innerHTML = vigas.length ? vigas.map(v => `
+            <div id="viga-item-${v.id}" class="item-agregado ${seleccion.vigas.has(v.id) ? 'seleccionado' : ''}" onclick="seleccionarDesdeLista('viga', ${v.id}, event)">
+                <span><strong>${v.label}</strong>: (${v.n1.x.toFixed(2)}, ${v.n1.y.toFixed(2)}) a (${v.n2.x.toFixed(2)}, ${v.n2.y.toFixed(2)})</span>
+                <button class="btn-eliminar" onclick="event.stopPropagation(); eliminarViga(${v.id})">X</button>
+            </div>`).join('') : '<em>No hay vigas.</em>';
+            
+        const nombresApoyos = ["Libre", "Simple", "Articulado", "Empotrado"];
+        let listNodos = document.getElementById('lista-nodos');
+        listNodos.innerHTML = nodos.length ? nodos.map(n => `
+            <div id="nodo-item-${n.id}" class="item-agregado ${seleccion.nodos.has(n.id) ? 'seleccionado' : ''}" onclick="seleccionarDesdeLista('nodo', ${n.id}, event)">
+                <span><strong>${n.label}</strong>: (${n.x.toFixed(2)}, ${n.y.toFixed(2)}) - ${nombresApoyos[n.apoyo]}</span>
+                <button class="btn-eliminar" onclick="event.stopPropagation(); eliminarNodo(${n.id})">X</button>
+            </div>`).join('') : '<em>No hay nodos.</em>';
+        
+        try {
+            let datosVigas = vigas.map(v => ({ id: v.id, label: v.label || `V${v.id}` }));
+            localStorage.setItem('vigas_estructura', JSON.stringify(datosVigas));
+            // Estructura completa (geometría y apoyos) para el motor de cálculo y el informe
+            localStorage.setItem('estructura_completa', JSON.stringify({
+                nodos: nodos.map(n => ({ id: n.id, label: n.label, x: n.x, y: n.y, apoyo: n.apoyo })),
+                vigas: vigas.map(v => ({ id: v.id, label: v.label || `V${v.id}`, n1: v.n1.id, n2: v.n2.id }))
+            }));
+        } catch (e) {}
+
+        dibujarCanvas();
+    }
+
+    window.seleccionarDesdeLista = function(tipo, id, event) {
+        let setObjetivo = (tipo === 'viga') ? seleccion.vigas : seleccion.nodos;
+        if (!event.ctrlKey) { seleccion.nodos.clear(); seleccion.vigas.clear(); }
+        if (setObjetivo.has(id)) setObjetivo.delete(id); else setObjetivo.add(id);
+        actualizarUI();
+    }
+
+    resizeCanvas();
+    actualizarUI(); // sincroniza el almacenamiento con el estado inicial (evita datos obsoletos)
+</script>
+</body>
+</html>
