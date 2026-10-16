@@ -37,6 +37,8 @@
         .btn-eliminar:hover { background:var(--danger-color); color:#fff; }
         .item-extra { background:var(--bg-color); border:1px solid var(--border-color); padding:11px; border-radius:8px; margin-bottom:9px; display:flex; flex-direction:column; gap:8px; }
         .fila-flex-wrap { display:flex; gap:8px; align-items:center; width:100%; }
+            @media (pointer:coarse) { select, input[type="text"] { font-size:16px; padding:11px 12px; } .btn-eliminar { padding:9px 14px; } .btn-accion { padding:11px 16px; } input[type="checkbox"] { width:22px; height:22px; } }
+        @media (max-width:760px) { body { padding:12px; height:100dvh; } }
     </style>
 </head>
 <body>

@@ -66,6 +66,9 @@
     .gi .el { color:var(--muted); }
     .nota { color:var(--muted); font-size:.78rem; margin:5px 0; }
     .nota b { color:var(--txt); }
+    .fgrid { grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr)); }
+    @media (pointer:coarse) { .campo input, .campo select { font-size:16px; padding:11px 12px; } button { padding:12px 18px; } }
+    @media (max-width:760px) { body { padding:14px 12px 40px; height:100dvh; } .campo { flex:1 1 140px; } .campo input, .campo select { width:100%; } .barra { gap:10px; } .barra button { flex:1 1 140px; } }
 </style>
 </head>
 <body>

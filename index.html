@@ -6,7 +6,7 @@
     <title>Sistema Integrado de Diseño Estructural</title>
     <style>
         * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter','Segoe UI',system-ui,-apple-system,Roboto,sans-serif; }
-        body { background:#0f1318; color:#e8ecf1; height:100vh; overflow:hidden; display:flex; flex-direction:column; }
+        body { background:#0f1318; color:#e8ecf1; height:100vh; height:100dvh; overflow:hidden; display:flex; flex-direction:column; }
         header { background:#171c23; padding:0 24px; border-bottom:1px solid #2c3542; display:flex; align-items:center; gap:32px; height:54px; box-shadow:0 2px 14px rgba(0,0,0,.4); z-index:5; }
         header .titulo { font-size:1rem; font-weight:700; color:#e8ecf1; display:flex; align-items:center; gap:10px; letter-spacing:.2px; }
         header .titulo::before { content:''; width:10px; height:22px; border-radius:3px; background:#e0b13a; }
@@ -14,11 +14,24 @@
         nav button { background:transparent; color:#8b97a7; border:none; border-bottom:3px solid transparent; padding:0 18px; height:100%; font-size:.88rem; font-weight:500; cursor:pointer; transition:.15s; }
         nav button:hover { color:#e8ecf1; background:rgba(255,255,255,.03); }
         nav button.activo { color:#e0b13a; border-bottom-color:#e0b13a; font-weight:700; }
-        .vista { display:none; flex:1; height:calc(100vh - 54px); width:100%; }
+        .vista { display:none; flex:1; height:calc(100vh - 54px); height:calc(100dvh - 54px); width:100%; }
         .vista.activa { display:flex; }
         .panel-iframe { flex:1; border:none; height:100%; background:#0f1318; }
         .divisor { width:6px; background:#171c23; border-left:1px solid #2c3542; border-right:1px solid #2c3542; cursor:ew-resize; transition:background .15s; }
         .divisor:hover { background:#e0b13a; }
+        .solo-movil { display:none; }
+        @media (max-width:800px) {
+            header { padding:0 8px; gap:8px; height:48px; }
+            header .titulo { display:none; }
+            nav { width:100%; overflow-x:auto; }
+            nav button { padding:0 14px; white-space:nowrap; }
+            .solo-escritorio { display:none; }
+            .solo-movil { display:block; }
+            .vista { height:calc(100vh - 48px); height:calc(100dvh - 48px); }
+            .divisor { display:none; }
+            #vista-diseno .panel-iframe { width:100% !important; flex:1 !important; }
+            #vista-diseno[data-sub="grafico"] #iframe-sistema, #vista-diseno[data-sub="def"] #iframe-grafico { display:none; }
+        }
     </style>
 </head>
 <body>
@@ -26,14 +39,16 @@
     <header>
         <div class="titulo">Diseño de Estructuras de Hormigón Armado</div>
         <nav>
-            <button id="tab-diseno" class="activo" onclick="mostrarVista('diseno')">Entorno y Definiciones</button>
+            <button id="tab-diseno" class="activo solo-escritorio" onclick="mostrarVista('diseno')">Entorno y Definiciones</button>
+            <button id="tab-grafico" class="solo-movil" onclick="mostrarVista('grafico')">Entorno gráfico</button>
+            <button id="tab-def" class="solo-movil" onclick="mostrarVista('def')">Definiciones</button>
             <button id="tab-calculos" onclick="mostrarVista('calculos')">Cálculos</button>
             <button id="tab-informe" onclick="mostrarVista('informe')">Informe PDF</button>
         </nav>
     </header>
 
     <!-- Vista 1: Entorno gráfico + Definiciones del sistema -->
-    <div id="vista-diseno" class="vista activa">
+    <div id="vista-diseno" class="vista activa" data-sub="grafico">
         <iframe id="iframe-grafico" class="panel-iframe" src="InterfazGrafico.html"></iframe>
         <div class="divisor" id="divisor"></div>
         <iframe id="iframe-sistema" class="panel-iframe" src="DefinicionesSistema.html"></iframe>
@@ -50,16 +65,30 @@
     </div>
 
     <script>
+        const esMovil = () => window.matchMedia('(max-width:800px)').matches;
+        let vistaActual = 'diseno', subActual = 'grafico';
+
+        function actualizarNav() {
+            const activo = (vistaActual === 'diseno' && esMovil()) ? subActual : vistaActual;
+            ['diseno', 'grafico', 'def', 'calculos', 'informe'].forEach(t => document.getElementById('tab-' + t).classList.toggle('activo', t === activo));
+        }
+
         function mostrarVista(nombre, urlInforme) {
-            ['diseno', 'calculos', 'informe'].forEach(v => {
-                document.getElementById('vista-' + v).classList.toggle('activa', v === nombre);
-                document.getElementById('tab-' + v).classList.toggle('activo', v === nombre);
-            });
+            // En celular el entorno gráfico y las definiciones se ven por separado ('grafico' / 'def')
+            if (nombre === 'grafico' || nombre === 'def') { subActual = nombre; nombre = 'diseno'; }
+            vistaActual = nombre;
+            document.getElementById('vista-diseno').dataset.sub = subActual;
+            ['diseno', 'calculos', 'informe'].forEach(v => document.getElementById('vista-' + v).classList.toggle('activa', v === nombre));
+            actualizarNav();
+            // Los paneles ocultados con display:none necesitan recalcular su tamaño al mostrarse
+            setTimeout(() => ['iframe-grafico', 'iframe-sistema', 'iframe-calculos'].forEach(id => { try { document.getElementById(id).contentWindow.dispatchEvent(new Event('resize')); } catch (err) {} }), 50);
             if (nombre === 'informe') {
                 // Se recarga para tomar siempre los últimos resultados guardados
                 document.getElementById('iframe-informe').src = urlInforme || ('Informe.html?t=' + Date.now());
             }
         }
+
+        window.matchMedia('(max-width:800px)').addEventListener('change', () => { actualizarNav(); mostrarVista(vistaActual); });
 
         // Llamada desde Calculos.html: abre el informe y descarga el PDF automáticamente
         function mostrarInforme(auto) {

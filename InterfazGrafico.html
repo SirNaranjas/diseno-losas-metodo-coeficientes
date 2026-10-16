@@ -47,6 +47,30 @@
         .lista-items > em { color:var(--muted); }
         .btn-eliminar { background:transparent; color:var(--danger-color); border:1px solid rgba(229,83,75,.5); padding:3px 9px; border-radius:6px; cursor:pointer; font-size:.78rem; font-weight:600; transition:.15s; }
         .btn-eliminar:hover { background:var(--danger-color); color:#fff; }
+
+        .canvas-overlay-bottom { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:flex; flex-wrap:wrap; justify-content:center; gap:8px; z-index:10; width:calc(100% - 16px); pointer-events:none; }
+        .canvas-overlay-bottom .btn-overlay { pointer-events:auto; }
+        .btn-peligro { color:#f4a9a9; }
+        canvas { touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+        @media (pointer:coarse) {
+            .btn-overlay { padding:10px 14px; font-size:.86rem; }
+            .btn-herramienta-cuadrado { width:48px; height:48px; }
+            .btn-simbolo { width:50px; height:50px; }
+            .btn-eliminar { padding:9px 15px; }
+            .item-agregado { padding:12px; }
+            #ayuda-escritorio { display:none !important; }
+            #ayuda-tactil { display:block !important; }
+        }
+        @media (max-width:760px) {
+            body { padding:10px; height:100dvh; overflow-y:auto; overflow-x:hidden; }
+            h2 { margin-bottom:10px; }
+            .layout-principal { flex-direction:column; height:auto; }
+            .columna-grafico { flex:none; height:calc(100dvh - 70px); min-height:380px; }
+            .columna-controles { height:auto; overflow:visible; padding-right:0; padding-bottom:20px; }
+            .canvas-overlay-left { top:8px; left:8px; gap:6px; flex-wrap:wrap; max-width:calc(100% - 118px); }
+            .canvas-overlay-right { top:8px; right:8px; gap:6px; }
+            .btn-overlay { padding:8px 10px; font-size:.78rem; }
+        }
     </style>
 </head>
 <body oncontextmenu="return true;">
@@ -72,6 +96,13 @@
                 </div>
 
                 <canvas id="lienzo"></canvas>
+
+                <div class="canvas-overlay-bottom">
+                    <button class="btn-overlay" onclick="deshacer()" title="Deshacer (Ctrl+Z)">↶ Deshacer</button>
+                    <button class="btn-overlay" id="btn-caja" onclick="toggleCaja()" title="Arrastra con un dedo para seleccionar varios elementos">▭ Selección</button>
+                    <button class="btn-overlay" onclick="cancelarAccion()" title="Cancelar (Esc)">Cancelar</button>
+                    <button class="btn-overlay btn-peligro" onclick="borrarSeleccion()" title="Borrar selección (Supr)">Borrar</button>
+                </div>
                 
                 <div id="menu-contextual">
                     <button class="btn-simbolo" title="Nodo Libre" onclick="asignarTipoApoyo(0)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg></button>
@@ -81,13 +112,16 @@
                 </div>
             </div>
             <div id="ayuda-viga" style="display: none; background: #e0b13a; color: black; text-align: center; font-size: 0.85rem; padding: 3px; font-weight: bold;">
-                Primer nodo seleccionado. Selecciona el segundo nodo para trazar la viga (ESC para cancelar).
+                Primer nodo seleccionado. Selecciona el segundo nodo para trazar la viga (ESC o botón Cancelar).
             </div>
             <div id="alerta-error" style="display: none; background: #ff4d4d; color: white; text-align: center; font-size: 0.85rem; padding: 3px;">
                 Debes iniciar la viga seleccionando un nodo existente.
             </div>
-            <div style="background: var(--bg-color); padding: 5px; text-align: center; color: #888; font-size: 0.8rem; border-top: 1px solid var(--border-color);">
+            <div id="ayuda-escritorio" style="background: var(--bg-color); padding: 5px; text-align: center; color: #888; font-size: 0.8rem; border-top: 1px solid var(--border-color);">
                 <strong>Clic Izquierdo:</strong> Seleccionar | <strong>Ctrl + Clic:</strong> Sumar | <strong>Der + Arrastrar:</strong> Selección múltiple | <strong>Supr:</strong> Borrar
+            </div>
+            <div id="ayuda-tactil" style="display:none; background: var(--bg-color); padding: 5px; text-align: center; color: #888; font-size: 0.78rem; border-top: 1px solid var(--border-color);">
+                <strong>Tocar:</strong> seleccionar / colocar | <strong>1 dedo:</strong> mover | <strong>2 dedos:</strong> zoom | <strong>Mantener:</strong> sumar a la selección
             </div>
         </div>
 
@@ -144,6 +178,7 @@
 
     function resizeCanvas() { canvas.width = contenedor.clientWidth; canvas.height = contenedor.clientHeight; dibujarCanvas(); }
     window.addEventListener('resize', resizeCanvas);
+    if (window.ResizeObserver) new ResizeObserver(() => { if (canvas.width !== contenedor.clientWidth || canvas.height !== contenedor.clientHeight) resizeCanvas(); }).observe(contenedor);
 
     let modoActual = 'viga'; 
     let isPanning = false, dragStart = null, dragCurrent = null;
@@ -317,7 +352,7 @@
 
     canvas.addEventListener('contextmenu', (e) => { if (rightClickMoved) e.preventDefault(); });
 
-    canvas.addEventListener('mousedown', (e) => {
+    function presionar(e) {
         let rect = canvas.getBoundingClientRect();
         let mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
         let worldPos = toWorld(mouseX, mouseY);
@@ -372,19 +407,20 @@
             } else if (modoActual === 'nodo') {
                 if (clickedNode && seleccion.nodos.size <= 1) {
                     nodoPendienteCoords = {x: clickedNode.x, y: clickedNode.y};
-                    menuContextual.style.left = `${mouseX + 10}px`; menuContextual.style.top = `${mouseY + 10}px`; menuContextual.style.display = 'flex';
+                    mostrarMenu(mouseX, mouseY);
                 } else {
                     if (clickedNode) { seleccion.nodos.clear(); seleccion.vigas.clear(); seleccion.nodos.add(clickedNode.id); actualizarUI(); }
                     else {
                         nodoPendienteCoords = clickedNode ? {x: clickedNode.x, y: clickedNode.y} : (hoveredNode ? {x: hoveredNode.x, y: hoveredNode.y} : snappedWorld);
-                        menuContextual.style.left = `${mouseX + 10}px`; menuContextual.style.top = `${mouseY + 10}px`; menuContextual.style.display = 'flex';
+                        mostrarMenu(mouseX, mouseY);
                     }
                 }
             }
         }
-    });
+    }
+    canvas.addEventListener('mousedown', presionar);
 
-    canvas.addEventListener('mousemove', (e) => {
+    function mover(e) {
         let rect = canvas.getBoundingClientRect();
         let mouseX = e.clientX - rect.left, mouseY = e.clientY - rect.top;
         let worldPos = toWorld(mouseX, mouseY);
@@ -412,27 +448,30 @@
             });
         }
         dibujarCanvas();
-    });
+    }
+    canvas.addEventListener('mousemove', mover);
 
     canvas.addEventListener('mouseup', (e) => {
         if (isPanning && e.button === 1) { isPanning = false; canvas.style.cursor = 'crosshair'; }
-        if (isSelectingBox && e.button === 2) {
-            isSelectingBox = false;
-            let startWorld = toWorld(selectionBoxStart.x, selectionBoxStart.y), endWorld = toWorld(selectionBoxCurrent.x, selectionBoxCurrent.y);
-            let minW = { x: Math.min(startWorld.x, endWorld.x), y: Math.min(startWorld.y, endWorld.y) };
-            let maxW = { x: Math.max(startWorld.x, endWorld.x), y: Math.max(startWorld.y, endWorld.y) };
-
-            if (Math.abs(maxW.x - minW.x) > 0.05 || Math.abs(maxW.y - minW.y) > 0.05) {
-                nodos.forEach(n => { if (n.x >= minW.x && n.x <= maxW.x && n.y >= minW.y && n.y <= maxW.y) seleccion.nodos.add(n.id); });
-                vigas.forEach(v => {
-                    if (v.n1.x >= minW.x && v.n1.x <= maxW.x && v.n1.y >= minW.y && v.n1.y <= maxW.y &&
-                        v.n2.x >= minW.x && v.n2.x <= maxW.x && v.n2.y >= minW.y && v.n2.y <= maxW.y) seleccion.vigas.add(v.id);
-                });
-            }
-            actualizarUI();
-        }
+        if (isSelectingBox && e.button === 2) finalizarCaja();
         dibujarCanvas();
     });
+
+    function finalizarCaja() {
+        isSelectingBox = false;
+        let startWorld = toWorld(selectionBoxStart.x, selectionBoxStart.y), endWorld = toWorld(selectionBoxCurrent.x, selectionBoxCurrent.y);
+        let minW = { x: Math.min(startWorld.x, endWorld.x), y: Math.min(startWorld.y, endWorld.y) };
+        let maxW = { x: Math.max(startWorld.x, endWorld.x), y: Math.max(startWorld.y, endWorld.y) };
+
+        if (Math.abs(maxW.x - minW.x) > 0.05 || Math.abs(maxW.y - minW.y) > 0.05) {
+            nodos.forEach(n => { if (n.x >= minW.x && n.x <= maxW.x && n.y >= minW.y && n.y <= maxW.y) seleccion.nodos.add(n.id); });
+            vigas.forEach(v => {
+                if (v.n1.x >= minW.x && v.n1.x <= maxW.x && v.n1.y >= minW.y && v.n1.y <= maxW.y &&
+                    v.n2.x >= minW.x && v.n2.x <= maxW.x && v.n2.y >= minW.y && v.n2.y <= maxW.y) seleccion.vigas.add(v.id);
+            });
+        }
+        actualizarUI();
+    }
 
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault(); let factor = e.deltaY < 0 ? 1.1 : 0.9;
@@ -443,21 +482,119 @@
         dibujarCanvas();
     });
 
+    // ---------- Acciones reutilizables (teclado y botones táctiles) ----------
+    window.cancelarAccion = function() {
+        if (nodoInicioViga) { nodoInicioViga = null; document.getElementById('ayuda-viga').style.display = 'none'; }
+        seleccion.nodos.clear(); seleccion.vigas.clear(); menuContextual.style.display = 'none'; nodoPendienteCoords = null; actualizarUI();
+    }
+    window.borrarSeleccion = function() {
+        if (seleccion.nodos.size > 0 || seleccion.vigas.size > 0) {
+            guardarEstado();
+            vigas = vigas.filter(v => !seleccion.vigas.has(v.id) && !seleccion.nodos.has(v.n1.id) && !seleccion.nodos.has(v.n2.id));
+            nodos = nodos.filter(n => !seleccion.nodos.has(n.id));
+            seleccion.nodos.clear(); seleccion.vigas.clear(); actualizarUI();
+        }
+    }
+
     window.addEventListener('keydown', (e) => {
         if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); deshacer(); return; }
         if (e.key === 'f' || e.key === 'F') { if (!['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) encuadrarEstructura(); }
-        if (e.key === 'Escape') {
-            if (nodoInicioViga) { nodoInicioViga = null; document.getElementById('ayuda-viga').style.display = 'none'; }
-            seleccion.nodos.clear(); seleccion.vigas.clear(); menuContextual.style.display = 'none'; nodoPendienteCoords = null; actualizarUI();
-        } else if (e.key === 'Delete' || e.key === 'Backspace') {
-            if (seleccion.nodos.size > 0 || seleccion.vigas.size > 0) {
-                guardarEstado(); 
-                vigas = vigas.filter(v => !seleccion.vigas.has(v.id) && !seleccion.nodos.has(v.n1.id) && !seleccion.nodos.has(v.n2.id));
-                nodos = nodos.filter(n => !seleccion.nodos.has(n.id));
-                seleccion.nodos.clear(); seleccion.vigas.clear(); actualizarUI();
-            }
-        }
+        if (e.key === 'Escape') cancelarAccion();
+        else if (e.key === 'Delete' || e.key === 'Backspace') borrarSeleccion();
     });
+
+    // ---------- Soporte táctil ----------
+    // 1 toque: equivale al clic izquierdo · 1 dedo arrastrando: mover la vista · 2 dedos: zoom y desplazamiento
+    // Mantener pulsado: equivale a Ctrl + clic (sumar a la selección) · botón "Selección": arrastrar un recuadro
+    let ultimoEsTactil = false, modoCajaTactil = false, tch = null;
+    const TOCAR_PX = 10, MANTENER_MS = 500;
+
+    function mostrarMenu(x, y) {
+        menuContextual.style.display = 'flex';
+        const w = menuContextual.offsetWidth, h = menuContextual.offsetHeight;
+        let left = x + 10, top = y + 10;
+        if (ultimoEsTactil) { left = x - w / 2; top = y - h - 24; if (top < 8) top = y + 24; }
+        left = Math.max(6, Math.min(left, canvas.width - w - 6));
+        top = Math.max(6, Math.min(top, canvas.height - h - 6));
+        menuContextual.style.left = left + 'px'; menuContextual.style.top = top + 'px';
+    }
+
+    window.toggleCaja = function() {
+        modoCajaTactil = !modoCajaTactil;
+        document.getElementById('btn-caja').classList.toggle('activo', modoCajaTactil);
+    }
+
+    const posToque = t => { const r = canvas.getBoundingClientRect(); return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+    const eventoFalso = (x, y, ctrl) => { const r = canvas.getBoundingClientRect(); return { clientX: x + r.left, clientY: y + r.top, button: 0, ctrlKey: !!ctrl, preventDefault() {} }; };
+
+    function iniciarPellizco(e) {
+        const a = posToque(e.touches[0]), b = posToque(e.touches[1]), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+        tch = { modo: 'pellizco', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, zoom0: camera.zoom, mundoC: toWorld(cx, cy) };
+        isPanning = false; isSelectingBox = false;
+    }
+
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault(); ultimoEsTactil = true;
+        if (tch && tch.timer) clearTimeout(tch.timer);
+        if (e.touches.length >= 2) { iniciarPellizco(e); return; }
+        const p = posToque(e.touches[0]);
+        tch = { modo: 'pendiente', x0: p.x, y0: p.y, camX: camera.x, camY: camera.y };
+        tch.timer = setTimeout(() => {
+            if (tch && tch.modo === 'pendiente') {
+                tch.modo = 'largo';
+                hoveredNode = null; hoveredViga = null;
+                presionar(eventoFalso(tch.x0, tch.y0, true));
+                if (navigator.vibrate) navigator.vibrate(30);
+            }
+        }, MANTENER_MS);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!tch) return;
+        if (tch.modo === 'pellizco' && e.touches.length >= 2) {
+            const a = posToque(e.touches[0]), b = posToque(e.touches[1]), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+            camera.zoom = Math.max(10, Math.min(tch.zoom0 * (Math.hypot(a.x - b.x, a.y - b.y) / tch.d0), 500));
+            const despues = toWorld(cx, cy);
+            camera.x += tch.mundoC.x - despues.x; camera.y += tch.mundoC.y - despues.y;
+            dibujarCanvas(); return;
+        }
+        if (e.touches.length !== 1) return;
+        const p = posToque(e.touches[0]);
+        if (tch.modo === 'pendiente' && Math.hypot(p.x - tch.x0, p.y - tch.y0) > TOCAR_PX) {
+            clearTimeout(tch.timer);
+            if (modoCajaTactil) {
+                tch.modo = 'caja'; isSelectingBox = true;
+                selectionBoxStart = { x: tch.x0, y: tch.y0 }; selectionBoxCurrent = { x: p.x, y: p.y };
+                menuContextual.style.display = 'none';
+            } else { tch.modo = 'mover'; menuContextual.style.display = 'none'; }
+        }
+        if (tch.modo === 'mover') {
+            camera.x = tch.camX - (p.x - tch.x0) / camera.zoom;
+            camera.y = tch.camY + (p.y - tch.y0) / camera.zoom;
+            dibujarCanvas();
+        } else if (tch.modo === 'caja') { selectionBoxCurrent = { x: p.x, y: p.y }; dibujarCanvas(); }
+    }, { passive: false });
+
+    function terminarToque(e) {
+        e.preventDefault();
+        if (!tch) return;
+        clearTimeout(tch.timer);
+        if (e.touches.length > 0) { tch = { modo: 'ignorar' }; return; }   // quedó un dedo después de un pellizco
+        const t = tch; tch = null;
+        if (e.type === 'touchcancel') { isSelectingBox = false; dibujarCanvas(); return; }
+        if (t.modo === 'pendiente') {                                       // toque simple
+            hoveredNode = null; hoveredViga = null;
+            const w = toWorld(t.x0, t.y0); dragCurrent = { x: snap(w.x), y: snap(w.y) };
+            presionar(eventoFalso(t.x0, t.y0, false));
+            dibujarCanvas();
+        } else if (t.modo === 'caja') {
+            finalizarCaja(); if (modoCajaTactil) toggleCaja();
+            dibujarCanvas();
+        }
+    }
+    canvas.addEventListener('touchend', terminarToque, { passive: false });
+    canvas.addEventListener('touchcancel', terminarToque, { passive: false });
 
     window.setModo = function(modo) {
         modoActual = modo;
