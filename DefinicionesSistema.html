@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Definiciones del Sistema y Cargas</title>
+    
+    <style>
+        :root {
+            --bg-color:#0f1318; --panel-color:#171c23; --panel2:#1e252e; --raised:#252d38;
+            --text-color:#e8ecf1; --muted:#8b97a7; --accent-color:#e0b13a; --accent-soft:rgba(224,177,58,.12);
+            --danger-color:#e5534b; --node-color:#ef4444; --border-color:#2c3542; --grid-color:#262e39; --axis-color:#5b6778;
+            --radius:10px; --shadow:0 4px 18px rgba(0,0,0,.35);
+        }
+        * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter','Segoe UI',system-ui,-apple-system,Roboto,sans-serif; }
+        ::-webkit-scrollbar { width:10px; height:10px; } ::-webkit-scrollbar-thumb { background:#2f3947; border-radius:8px; } ::-webkit-scrollbar-track { background:transparent; }
+
+        body { background:var(--bg-color); color:var(--text-color); padding:18px; height:100vh; overflow-y:auto; font-size:.9rem; }
+        .seccion-sistema { background:var(--panel-color); border:1px solid var(--border-color); border-radius:var(--radius); padding:18px; margin-bottom:16px; box-shadow:var(--shadow); }
+        h3 { margin-bottom:14px; font-size:.82rem; text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid var(--border-color); padding-bottom:9px; color:var(--accent-color); font-weight:700; }
+        h4 { margin:12px 0 8px; font-size:.9rem; color:var(--text-color); font-weight:600; }
+        .form-group { margin-bottom:14px; display:flex; flex-direction:column; gap:6px; }
+        label { font-size:.72rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+        select, input[type="text"] { background:var(--bg-color); color:var(--text-color); border:1px solid var(--border-color); padding:9px 11px; border-radius:7px; font-size:.88rem; outline:none; width:100%; transition:border-color .15s, box-shadow .15s; }
+        input[type="text"]::-webkit-inner-spin-button, input[type="text"]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+        select:focus, input[type="text"]:focus { border-color:var(--accent-color); box-shadow:0 0 0 3px var(--accent-soft); }
+        input:disabled { background:var(--panel2); color:#9aa5b4; cursor:not-allowed; }
+        input[type="checkbox"] { accent-color:var(--accent-color); width:16px; height:16px; }
+        .fila-par { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; }
+        .checkbox-group { display:flex; align-items:center; gap:9px; margin-top:4px; font-size:.85rem; color:#cbd3de; }
+        .checkbox-group label { text-transform:none; letter-spacing:0; color:#cbd3de; font-size:.85rem; }
+        .sub-opcion { margin-top:8px; padding:12px; background:var(--bg-color); border-radius:8px; border:1px dashed var(--border-color); display:none; }
+        .info-valor { font-size:.78rem; color:var(--muted); margin-top:2px; font-family:Consolas,monospace; }
+        .btn-accion { background:var(--accent-color); color:#1a1405; border:none; padding:8px 14px; border-radius:7px; cursor:pointer; font-weight:700; font-size:.82rem; transition:.15s; }
+        .btn-accion:hover { background:#f0c24d; }
+        .btn-eliminar { background:transparent; color:var(--danger-color); border:1px solid rgba(229,83,75,.5); padding:5px 10px; border-radius:6px; cursor:pointer; font-size:.78rem; font-weight:600; flex-shrink:0; transition:.15s; }
+        .btn-eliminar:hover { background:var(--danger-color); color:#fff; }
+        .item-extra { background:var(--bg-color); border:1px solid var(--border-color); padding:11px; border-radius:8px; margin-bottom:9px; display:flex; flex-direction:column; gap:8px; }
+        .fila-flex-wrap { display:flex; gap:8px; align-items:center; width:100%; }
+            @media (pointer:coarse) { select, input[type="text"] { font-size:16px; padding:11px 12px; } .btn-eliminar { padding:9px 14px; } .btn-accion { padding:11px 16px; } input[type="checkbox"] { width:22px; height:22px; } }
+        @media (max-width:760px) { body { padding:12px; height:100dvh; } }
+    </style>
+</head>
+<body>
+
+    <!-- SECCIÓN 1: DEFINICIONES GEOMÉTRICAS -->
+    <div class="seccion-sistema">
+        <h3>Sección 1: Definiciones Geométricas</h3>
+
+        <div class="form-group">
+            <label for="franja-unitaria">Franja Unitaria:</label>
+            <select id="franja-unitaria" onchange="actualizarFranja()">
+                <option value="NO">NO</option>
+                <option value="SI">SI</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="base-b">Base b (m):</label>
+            <input type="text" id="base-b" value="0.30" onblur="formatearDecimal(this)" oninput="validarRestriccionesGenerales(this)">
+        </div>
+
+        <div class="form-group">
+            <label for="recubrimiento">Recubrimiento:</label>
+            <select id="recubrimiento" onchange="actualizarRecubrimiento()">
+                <option value="20">Losas interiores No expuestas (20 mm)</option>
+                <option value="40">Vigas y Columnas interiores (40 mm)</option>
+                <option value="75">En contacto con el suelo (75 mm)</option>
+                <option value="intemperie">Expuesto a la intemperie (40 mm - 50 mm)</option>
+            </select>
+        </div>
+
+        <div class="sub-opcion" id="grupo-intemperie">
+            <label for="valor-intemperie">Valor de recubrimiento intemperie (mm):</label>
+            <input type="text" id="valor-intemperie" value="45.00" onblur="formatearDecimal(this)" oninput="validarRestriccionesGenerales(this)">
+            <small style="color: #aaa; margin-top: 4px; display: block;">Ingrese un valor entre 40.00 y 50.00 mm.</small>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 2: DEFINICIONES MECÁNICAS -->
+    <div class="seccion-sistema">
+        <h3>Sección 2: Definiciones Mecánicas</h3>
+
+        <div class="form-group">
+            <label for="input-fy">Esfuerzo de fluencia (fy):</label>
+            <input type="text" id="input-fy" value="420.00 MPa" placeholder="Ej: 420 MPa" onblur="procesarResistencia(this, 'val-fy')">
+            <div class="info-valor" id="val-fy">Pascales: 4.20*10^8 Pa</div>
+        </div>
+
+        <div class="form-group">
+            <label for="input-fc">Resistencia del concreto (f’c):</label>
+            <input type="text" id="input-fc" value="28.00 MPa" placeholder="Ej: 28 MPa" onblur="procesarResistencia(this, 'val-fc')">
+            <div class="info-valor" id="val-fc">Pascales: 2.80*10^7 Pa</div>
+        </div>
+
+        <div class="form-group">
+            <label for="input-e">Módulo de elasticidad (E):</label>
+            <input type="text" id="input-e" value="200.00 GPa" placeholder="Ej: 200 GPa" onblur="procesarResistencia(this, 'val-e')">
+            <div class="info-valor" id="val-e">Pascales: 2.00*10^11 Pa</div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 3: DEFINICIÓN DE CARGAS -->
+    <div class="seccion-sistema">
+        <h3>Sección 3: Definición de Cargas</h3>
+
+        <div class="form-group">
+            <label for="peso-propio">Peso propio de la estructura:</label>
+            <select id="peso-propio">
+                <option value="SI">SI</option>
+                <option value="NO">NO</option>
+            </select>
+        </div>
+
+        <h4>Carga Muerta</h4>
+        <div class="form-group">
+            <label for="tipo-uso-muerta">1. Uso general de la estructura:</label>
+            <select id="tipo-uso-muerta" onchange="actualizarSubOpcionesMuerta(); calcularCargasMuertas();">
+                <option value="reunion">Reunión</option>
+                <option value="oficinas">Oficinas</option>
+                <option value="educativos">Educativos</option>
+                <option value="fabricas">Fábricas</option>
+                <option value="institucional">Institucional</option>
+                <option value="comercio">Comercio</option>
+                <option value="residencial">Residencial</option>
+                <option value="almacenamiento">Almacenamiento</option>
+                <option value="garajes">Garajes</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="sub-uso-muerta">2. Tipo de utilización / Ocupación específica:</label>
+            <select id="sub-uso-muerta" onchange="calcularCargasMuertas()"></select>
+        </div>
+
+        <div class="form-group">
+            <div class="checkbox-group">
+                <input type="checkbox" id="check-fachada" checked onchange="calcularCargasMuertas()">
+                <label for="check-fachada" style="font-weight: normal;">Incluir Fachada y particiones</label>
+            </div>
+            <div class="fila-par" style="margin-top: 4px;">
+                <label>Carga Particiones (Wpa):</label>
+                <input type="text" id="input-wpa" readonly disabled style="text-align: right; font-weight: bold;">
+            </div>
+            <div class="info-valor" id="val-wpa">Notación N/m²: 0.00*10^0 N/m²</div>
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
+            <div class="checkbox-group">
+                <input type="checkbox" id="check-afinado" checked onchange="calcularCargasMuertas()">
+                <label for="check-afinado" style="font-weight: normal;">Incluir Afinado de piso y cubierta</label>
+            </div>
+            <div class="fila-par" style="margin-top: 4px;">
+                <label>Carga Cubierta (Wcu):</label>
+                <input type="text" id="input-wcu" readonly disabled style="text-align: right; font-weight: bold;">
+            </div>
+            <div class="info-valor" id="val-wcu">Notación N/m²: 0.00*10^0 N/m²</div>
+        </div>
+
+        <!-- CARGAS VIVAS (DINÁMICAS) -->
+        <h4 style="margin-top: 20px;">Cargas Vivas (WLvgn)</h4>
+        <button class="btn-accion" onclick="agregarCargaViva()">+ Añadir Carga Viva</button>
+        <div id="contenedor-cargas-vivas" style="margin-top: 10px;"></div>
+
+        <!-- CARGAS EXTRAS -->
+        <h4 style="margin-top: 20px;">Cargas Extras Personalizadas</h4>
+        <button class="btn-accion" onclick="agregarCargaExtra()">+ Añadir Carga Extra</button>
+        <div id="contenedor-extras" style="margin-top: 10px;"></div>
+    </div>
+
+
+    <script>
+        // LECTURA DIRECTA DE VIGAS DESDE LOCALSTORAGE
+        function obtenerVigasGraficas() {
+            try {
+                let guardadas = JSON.parse(localStorage.getItem('vigas_estructura'));
+                if (guardadas && Array.isArray(guardadas)) {
+                    return guardadas;
+                }
+            } catch (e) {}
+            return [];
+        }
+
+        // Sincronizar automáticamente si cambian en el entorno gráfico
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'vigas_estructura') {
+                actualizarTodosLosSelectsVigas();
+            }
+        });
+
+        // Actualizar selects al hacer clic en cualquier parte del panel de cargas
+        document.addEventListener('click', () => {
+            actualizarTodosLosSelectsVigas();
+        });
+
+        function poblarVigasSelect(selectId) {
+            let select = document.getElementById(selectId);
+            if (!select) return;
+            let vigasGraficas = obtenerVigasGraficas();
+            let valorActual = select.value;
+            
+            select.innerHTML = '<option value="Todas">Todas las Vigas</option>';
+            if (vigasGraficas.length === 0) {
+                let opt = document.createElement('option');
+                opt.disabled = true;
+                opt.textContent = "No hay vigas creadas en el entorno gráfico";
+                select.appendChild(opt);
+            } else {
+                vigasGraficas.forEach(v => {
+                    let opt = document.createElement('option');
+                    let nombreViga = v.label || `V${v.id}`;
+                    opt.value = nombreViga;
+                    opt.textContent = nombreViga;
+                    select.appendChild(opt);
+                });
+            }
+            select.value = valorActual;
+        }
+
+        function actualizarTodosLosSelectsVigas() {
+            for (let i = 1; i <= contadorVivas; i++) {
+                poblarVigasSelect(`select-viva-viga-${i}`);
+            }
+            for (let i = 1; i <= contadorExtras; i++) {
+                let tipo = document.getElementById(`tipo-extra-${i}`);
+                if (tipo && tipo.value === 'viva') {
+                    poblarVigasSelect(`viga-extra-${i}`);
+                }
+            }
+        }
+
+        // VALIDACIONES Y RESTRICCIONES GEOMÉTRICAS/MECÁNICAS
+        function validarRestriccionesGenerales(input) {
+            let valor = input.value.replace(/[^0-9.]/g, '');
+            let partes = valor.split('.');
+            if (partes.length > 2) valor = partes[0] + '.' + partes.slice(1).join('');
+            if (partes.length === 2 && partes[1].length > 2) valor = partes[0] + '.' + partes[1].substring(0, 2);
+            input.value = valor;
+        }
+
+        function formatearDecimal(input) {
+            let numero = parseFloat(input.value);
+            if (isNaN(numero) || numero < 0) numero = 0.00;
+            input.value = numero.toFixed(2);
+        }
+
+        function actualizarFranja() {
+            const esSi = document.getElementById('franja-unitaria').value === 'SI';
+            const inputB = document.getElementById('base-b');
+            if (esSi) { inputB.value = "1.00"; inputB.disabled = true; } 
+            else { inputB.disabled = false; }
+        }
+
+        function actualizarRecubrimiento() {
+            const seleccion = document.getElementById('recubrimiento').value;
+            document.getElementById('grupo-intemperie').style.display = (seleccion === 'intemperie') ? 'block' : 'none';
+        }
+
+        function procesarResistencia(input, idEtiquetaValor) {
+            let texto = input.value.trim();
+            let match = texto.match(/^([-+]?[0-9]*\.?[0-9]+)\s*([a-zA-Z]*)$/);
+            if (!match) {
+                input.value = "0.00 Pa";
+                document.getElementById(idEtiquetaValor).innerText = "Pascales: 0.00*10^0 Pa";
+                return;
+            }
+            let numero = parseFloat(match[1]), unidadLower = (match[2] || "Pa").toLowerCase();
+            let multiplicador = 1;
+            if (unidadLower === 'kpa') multiplicador = 1e3;
+            else if (unidadLower === 'mpa') multiplicador = 1e6;
+            else if (unidadLower === 'gpa') multiplicador = 1e9;
+            else if (unidadLower === 'tpa') multiplicador = 1e12;
+
+            if (isNaN(numero) || numero < 0) numero = 0.00;
+            input.value = `${numero.toFixed(2)} ${match[2] || 'Pa'}`;
+            let valorEnPascal = numero * multiplicador;
+
+            if (valorEnPascal === 0) {
+                document.getElementById(idEtiquetaValor).innerText = "Pascales: 0.00*10^0 Pa";
+                return;
+            }
+            let exp = Math.floor(Math.log10(valorEnPascal)), residuo = exp % 3;
+            if (residuo < 0) residuo += 3;
+            let exponenteIngenieril = exp - residuo, coeficiente = valorEnPascal / Math.pow(10, exponenteIngenieril);
+            if (coeficiente >= 1000) { coeficiente /= 1000; exponenteIngenieril += 3; }
+            document.getElementById(idEtiquetaValor).innerText = `Pascales: ${coeficiente.toFixed(2)}*10^${exponenteIngenieril} Pa`;
+        }
+
+        // BASES DE DATOS DE CARGAS
+        const baseDatosMuertas = {
+            "reunion": [{ nombre: "Edificaciones con salón de reunión < 100 personas", pa: 1.0, cu: 1.8 }],
+            "oficinas": [{ nombre: "Particiones móviles de altura total", pa: 1.0, cu: 1.8 }, { nombre: "Particiones fijas de mampostería", pa: 2.0, cu: 1.8 }],
+            "educativos": [{ nombre: "Salones de clase", pa: 2.0, cu: 1.5 }],
+            "fabricas": [{ nombre: "Industrias livianas", pa: 0.8, cu: 1.6 }],
+            "institucional": [{ nombre: "Internados con atención a residentes", pa: 2.0, cu: 1.6 }, { nombre: "Prisiones y centros de detención", pa: 2.5, cu: 1.8 }, { nombre: "Guarderías", pa: 2.0, cu: 1.6 }],
+            "comercio": [{ nombre: "Exhibición y venta de mercancías", pa: 1.5, cu: 1.4 }],
+            "residencial": [{ nombre: "Fachada y particiones de mampostería", pa: 3.0, cu: 1.6 }, { nombre: "Fachada y particiones livianas", pa: 2.0, cu: 1.4 }],
+            "almacenamiento": [{ nombre: "Almacenamiento de materiales livianos", pa: 1.5, cu: 1.5 }],
+            "garajes": [{ nombre: "Garajes para vehículos con capacidad hasta 2000 kg", pa: 0.2, cu: 1.0 }]
+        };
+
+        const baseDatosVivas = {
+            "reunion": [{ nombre: "Balcones", valor: 5.0 }, { nombre: "Corredores y escaleras", valor: 5.0 }, { nombre: "Silletería fija", valor: 3.0 }, { nombre: "Gimnasios", valor: 5.0 }, { nombre: "Vestíbulos", valor: 5.0 }, { nombre: "Silletería móvil", valor: 5.0 }, { nombre: "Áreas recreativas", valor: 5.0 }, { nombre: "Plataformas", valor: 5.0 }, { nombre: "Escenarios", valor: 7.5 }],
+            "oficinas": [{ nombre: "Corredores y escaleras", valor: 3.0 }, { nombre: "Oficinas", valor: 2.0 }, { nombre: "Restaurantes", valor: 5.0 }],
+            "educativos": [{ nombre: "Salones de clase", valor: 2.0 }, { nombre: "Corredores y escaleras", valor: 5.0 }, { nombre: "Bibliotecas", valor: 2.0 }, { nombre: "Estanterías", valor: 7.0 }],
+            "fabricas": [{ nombre: "Industrias livianas", valor: 5.0 }, { nombre: "Industrias pesadas", valor: 10.0 }],
+            "institucional": [{ nombre: "Cuartos de cirugía, laboratorios", valor: 4.0 }, { nombre: "Cuartos privados", valor: 2.0 }, { nombre: "Corredores y escaleras", valor: 5.0 }],
+            "comercio": [{ nombre: "Minorista", valor: 5.0 }, { nombre: "Mayorista", valor: 6.0 }],
+            "residencial": [{ nombre: "Balcones", valor: 5.0 }, { nombre: "Cuartos privados y sus corredores", valor: 1.8 }, { nombre: "Escaleras", valor: 3.0 }],
+            "almacenamiento": [{ nombre: "Liviano", valor: 6.0 }, { nombre: "Pesado", valor: 12.0 }],
+            "garajes": [{ nombre: "Automóviles de pasajeros", valor: 2.5 }, { nombre: "Vehículos de carga hasta 2000 kg", valor: 5.0 }]
+        };
+
+        function actualizarSubOpcionesMuerta() {
+            const usoGeneral = document.getElementById('tipo-uso-muerta').value;
+            const selectSub = document.getElementById('sub-uso-muerta');
+            selectSub.innerHTML = "";
+            let opciones = baseDatosMuertas[usoGeneral] || [];
+            opciones.forEach((item, index) => {
+                let opt = document.createElement('option'); opt.value = index; opt.textContent = item.nombre; selectSub.appendChild(opt);
+            });
+            actualizarSelectsVivasGlobales();
+        }
+
+        function calcularCargasMuertas() {
+            const usoGeneral = document.getElementById('tipo-uso-muerta').value;
+            const indiceSub = parseInt(document.getElementById('sub-uso-muerta').value) || 0;
+            const incFachada = document.getElementById('check-fachada').checked;
+            const incAfinado = document.getElementById('check-afinado').checked;
+            let seleccionado = (baseDatosMuertas[usoGeneral] || [])[indiceSub] || { pa: 1.0, cu: 1.8 };
+
+            document.getElementById('input-wpa').value = `${(incFachada ? seleccionado.pa : 0.0).toFixed(2)} kN/m²`;
+            document.getElementById('input-wcu').value = `${(incAfinado ? seleccionado.cu : 0.0).toFixed(2)} kN/m²`;
+        }
+
+        // CARGAS VIVAS DINÁMICAS
+        let contadorVivas = 0;
+        function agregarCargaViva() {
+            contadorVivas++;
+            let contenedor = document.getElementById('contenedor-cargas-vivas');
+            let usoGeneral = document.getElementById('tipo-uso-muerta').value;
+            let opcionesViva = baseDatosVivas[usoGeneral] || [{ nombre: "General", valor: 2.0 }];
+
+            let div = document.createElement('div'); div.className = 'item-extra'; div.id = `viva-item-${contadorVivas}`;
+            let optionsHtml = ''; opcionesViva.forEach(item => { optionsHtml += `<option value="${item.valor}">${item.nombre} (${item.valor.toFixed(1)} kN/m²)</option>`; });
+
+            div.innerHTML = `
+                <div class="fila-flex-wrap">
+                    <select id="select-viva-tipo-${contadorVivas}" style="flex: 2; min-width: 140px;" onchange="actualizarValorVivaItem(${contadorVivas})">${optionsHtml}</select>
+                    <input type="text" id="valor-viva-num-${contadorVivas}" readonly disabled style="flex: 1; min-width: 90px; text-align: right; font-weight: bold;">
+                    <button class="btn-eliminar" onclick="eliminarCargaViva(${contadorVivas})">X</button>
+                </div>
+                <div class="fila-flex-wrap">
+                    <label style="font-size: 0.8rem; min-width: 40px;">Viga:</label>
+                    <select id="select-viva-viga-${contadorVivas}" style="flex: 1;"><option value="Todas">Todas las Vigas</option></select>
+                </div>
+            `;
+            contenedor.appendChild(div);
+            poblarVigasSelect(`select-viva-viga-${contadorVivas}`);
+            actualizarValorVivaItem(contadorVivas);
+        }
+
+        function actualizarValorVivaItem(id) {
+            let sel = document.getElementById(`select-viva-tipo-${id}`);
+            let inputNum = document.getElementById(`valor-viva-num-${id}`);
+            if (sel && inputNum) inputNum.value = `${parseFloat(sel.value || 0).toFixed(2)} kN/m²`;
+        }
+
+        function actualizarSelectsVivasGlobales() {
+            let usoGeneral = document.getElementById('tipo-uso-muerta').value;
+            let opcionesViva = baseDatosVivas[usoGeneral] || [{ nombre: "General", valor: 2.0 }];
+            for (let i = 1; i <= contadorVivas; i++) {
+                let sel = document.getElementById(`select-viva-tipo-${i}`);
+                if (sel) {
+                    let valActual = sel.value; sel.innerHTML = '';
+                    opcionesViva.forEach(item => {
+                        let opt = document.createElement('option'); opt.value = item.valor; opt.textContent = `${item.nombre} (${item.valor.toFixed(1)} kN/m²)`; sel.appendChild(opt);
+                    });
+                    sel.value = valActual; actualizarValorVivaItem(i);
+                }
+            }
+        }
+
+        function eliminarCargaViva(id) { let el = document.getElementById(`viva-item-${id}`); if (el) el.remove(); }
+
+        // CARGAS EXTRAS
+        let contadorExtras = 0;
+        function agregarCargaExtra() {
+            contadorExtras++;
+            let contenedor = document.getElementById('contenedor-extras');
+            let div = document.createElement('div'); div.className = 'item-extra'; div.id = `extra-${contadorExtras}`;
+            div.innerHTML = `
+                <div class="fila-flex-wrap">
+                    <input type="text" placeholder="Nombre carga" style="flex: 2; min-width: 120px;" id="nombre-extra-${contadorExtras}">
+                    <input type="text" value="10.00 kN" style="flex: 1; min-width: 80px;" id="valor-extra-${contadorExtras}">
+                    <button class="btn-eliminar" onclick="eliminarCargaExtra(${contadorExtras})">X</button>
+                </div>
+                <div class="fila-flex-wrap">
+                    <label style="font-size: 0.8rem; min-width: 35px;">Tipo:</label>
+                    <select id="tipo-extra-${contadorExtras}" onchange="cambiarTipoExtra(${contadorExtras})" style="flex: 1;">
+                        <option value="muerta">Carga Muerta</option><option value="viva">Carga Viva</option>
+                    </select>
+                    <div id="contenedor-asignacion-${contadorExtras}" style="display: flex; gap: 5px; align-items: center; flex: 1;">
+                        <span style="font-size: 0.8rem; color: #aaa;">Global (Estructura)</span>
+                    </div>
+                </div>
+            `;
+            contenedor.appendChild(div); cambiarTipoExtra(contadorExtras);
+        }
+
+        function cambiarTipoExtra(id) {
+            let tipo = document.getElementById(`tipo-extra-${id}`).value;
+            let contenedorAsignacion = document.getElementById(`contenedor-asignacion-${id}`);
+            if (tipo === 'muerta') {
+                contenedorAsignacion.innerHTML = `<span style="font-size: 0.8rem; color: #aaa;">Global (Estructura)</span>`;
+            } else {
+                contenedorAsignacion.innerHTML = `
+                    <label style="font-size: 0.8rem; min-width: 35px;">Viga:</label>
+                    <select id="viga-extra-${id}" style="flex: 1;"><option value="Todas">Todas las Vigas</option></select>
+                `;
+                poblarVigasSelect(`viga-extra-${id}`);
+            }
+        }
+
+        function eliminarCargaExtra(id) { let el = document.getElementById(`extra-${id}`); if (el) el.remove(); }
+
+        // ============================================================
+        // EXPORTACIÓN DE DEFINICIONES (consumida por Calculos.html e Informe.html)
+        // ============================================================
+        function parsePa(texto) {
+            let m = (texto || '').trim().match(/^([-+]?[0-9]*\.?[0-9]+)\s*([a-zA-Z]*)$/);
+            if (!m) return 0;
+            let mult = { pa: 1, kpa: 1e3, mpa: 1e6, gpa: 1e9, tpa: 1e12 }[(m[2] || 'pa').toLowerCase()] || 1;
+            return parseFloat(m[1]) * mult;
+        }
+
+        function guardarDefiniciones() {
+            try {
+                const g = id => document.getElementById(id);
+                const rec = g('recubrimiento').value;
+                const recMm = rec === 'intemperie' ? (parseFloat(g('valor-intemperie').value) || 45) : parseFloat(rec);
+                const selUso = g('tipo-uso-muerta'), selSub = g('sub-uso-muerta');
+                const vivas = [];
+                for (let i = 1; i <= contadorVivas; i++) {
+                    const s = g(`select-viva-tipo-${i}`); if (!s) continue;
+                    const v = g(`select-viva-viga-${i}`);
+                    vivas.push({ nombre: s.selectedOptions[0] ? s.selectedOptions[0].textContent : '', valor: parseFloat(s.value) || 0, viga: v ? v.value : 'Todas' });
+                }
+                const extras = [];
+                for (let i = 1; i <= contadorExtras; i++) {
+                    const n = g(`nombre-extra-${i}`); if (!n) continue;
+                    const v = g(`viga-extra-${i}`);
+                    extras.push({ nombre: n.value || `Carga extra ${i}`, valorTexto: g(`valor-extra-${i}`).value, tipo: g(`tipo-extra-${i}`).value, viga: v ? v.value : 'Todas' });
+                }
+                localStorage.setItem('definiciones_sistema', JSON.stringify({
+                    franjaUnitaria: g('franja-unitaria').value,
+                    b: parseFloat(g('base-b').value) || 0,
+                    recubrimientoTipo: g('recubrimiento').selectedOptions[0].textContent,
+                    recubrimientoMm: recMm,
+                    fyPa: parsePa(g('input-fy').value), fyTexto: g('input-fy').value,
+                    fcPa: parsePa(g('input-fc').value), fcTexto: g('input-fc').value,
+                    EPa: parsePa(g('input-e').value), ETexto: g('input-e').value,
+                    pesoPropio: g('peso-propio').value === 'SI',
+                    usoGeneral: selUso.selectedOptions[0].textContent,
+                    usoEspecifico: selSub.selectedOptions[0] ? selSub.selectedOptions[0].textContent : '',
+                    incFachada: g('check-fachada').checked, incAfinado: g('check-afinado').checked,
+                    wpa: parseFloat(g('input-wpa').value) || 0,
+                    wcu: parseFloat(g('input-wcu').value) || 0,
+                    vivas: vivas, extras: extras
+                }));
+            } catch (e) {}
+        }
+        let _tmrGuardar = null;
+        ['input', 'change', 'click', 'focusout'].forEach(ev => document.addEventListener(ev, () => {
+            clearTimeout(_tmrGuardar); _tmrGuardar = setTimeout(guardarDefiniciones, 120);
+        }, true));
+
+        actualizarSubOpcionesMuerta();
+        calcularCargasMuertas();
+        guardarDefiniciones();
+    </script>
+</body>
+</html>

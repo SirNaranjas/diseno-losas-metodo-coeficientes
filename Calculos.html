@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cálculos y Verificaciones Normativas</title>
+<style>
+    :root {
+        --bg:#0f1318; --surface:#171c23; --surface2:#1e252e; --raised:#252d38;
+        --bd:#2c3542; --bd-soft:#232b36;
+        --txt:#e8ecf1; --muted:#8b97a7; --acc:#e0b13a; --acc-soft:rgba(224,177,58,.12);
+        --good:#4cc38a; --bad:#f06a6a; --info:#5aa9f0;
+        --radius:10px; --shadow:0 4px 18px rgba(0,0,0,.35);
+    }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:'Inter','Segoe UI',system-ui,-apple-system,Roboto,sans-serif; }
+    body { background:var(--bg); color:var(--txt); padding:22px 26px 40px; height:100vh; overflow-y:auto; font-size:.9rem; line-height:1.45; }
+    body::-webkit-scrollbar, .cuerpo::-webkit-scrollbar { width:10px; height:10px; }
+    body::-webkit-scrollbar-thumb { background:#2f3947; border-radius:8px; }
+    .cab { display:flex; align-items:baseline; gap:12px; margin-bottom:16px; }
+    .cab h2 { font-size:1.3rem; font-weight:700; letter-spacing:.2px; }
+    .cab span { color:var(--muted); font-size:.82rem; }
+
+    .barra { background:var(--surface); border:1px solid var(--bd); border-radius:var(--radius); padding:14px 16px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; box-shadow:var(--shadow); }
+    .campo { display:flex; flex-direction:column; gap:5px; }
+    .campo label { font-size:.7rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.6px; }
+    .campo input, .campo select { background:var(--bg); color:var(--txt); border:1px solid var(--bd); border-radius:7px; padding:8px 10px; width:150px; outline:none; font-size:.88rem; transition:border-color .15s, box-shadow .15s; }
+    .campo input:focus, .campo select:focus { border-color:var(--acc); box-shadow:0 0 0 3px var(--acc-soft); }
+    button { background:var(--acc); color:#1a1405; border:none; padding:9px 18px; border-radius:7px; cursor:pointer; font-weight:700; font-size:.85rem; transition:transform .1s, background .15s; }
+    button:hover { background:#f0c24d; } button:active { transform:translateY(1px); }
+    button.sec { background:var(--raised); color:var(--txt); border:1px solid var(--bd); } button.sec:hover { background:#303a47; }
+
+    .estado { padding:12px 16px; border-radius:var(--radius); margin-bottom:14px; font-weight:600; border:1px solid; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .estado.ok { background:rgba(76,195,138,.1); border-color:rgba(76,195,138,.5); color:var(--good); }
+    .estado.no { background:rgba(240,106,106,.1); border-color:rgba(240,106,106,.5); color:var(--bad); }
+    .estado.err { background:rgba(240,106,106,.14); border-color:var(--bad); color:#fff; display:block; }
+    .chip { background:rgba(255,255,255,.07); color:var(--txt); border-radius:20px; padding:2px 11px; font-size:.76rem; font-weight:500; }
+    .avisos { background:var(--acc-soft); border:1px solid rgba(224,177,58,.35); border-left:4px solid var(--acc); border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:.82rem; color:#ecd9a0; }
+    .avisos li { margin-left:18px; margin-bottom:3px; }
+    .avisos.rojo { background:rgba(240,106,106,.08); border-color:rgba(240,106,106,.4); border-left-color:var(--bad); color:#f4a9a9; }
+
+    details.paso { background:var(--surface); border:1px solid var(--bd); border-radius:var(--radius); margin-bottom:14px; box-shadow:var(--shadow); overflow:hidden; }
+    details.paso > summary { cursor:pointer; padding:13px 18px; font-weight:600; font-size:.98rem; list-style:none; display:flex; align-items:center; gap:12px; background:var(--surface2); user-select:none; }
+    details.paso > summary::-webkit-details-marker { display:none; }
+    details.paso > summary::after { content:'▾'; margin-left:auto; color:var(--muted); transition:transform .2s; }
+    details.paso:not([open]) > summary::after { transform:rotate(-90deg); }
+    details.paso > summary .num { background:var(--acc); color:#1a1405; border-radius:6px; padding:2px 9px; font-size:.8rem; font-weight:800; }
+    .cuerpo { padding:6px 18px 18px; overflow-x:auto; }
+    .cuerpo h4 { margin:14px 0 6px; font-size:.9rem; color:var(--acc); }
+    table.res { width:100%; border-collapse:collapse; margin:8px 0 12px; font-size:.78rem; }
+    table.res th { background:var(--raised); padding:8px 8px; text-align:center; border:1px solid var(--bd); font-weight:600; color:#cdd5df; position:sticky; top:0; }
+    table.res td { padding:9px 8px; border:1px solid var(--bd-soft); text-align:center; }
+    table.res tbody tr:nth-child(even) td { background:rgba(255,255,255,.025); }
+    table.res tbody tr:hover td { background:var(--acc-soft); }
+    table.res td:first-child { text-align:left; min-width:230px; padding:9px 12px; }
+    .ok { color:var(--good); font-weight:700; } .no { color:var(--bad); font-weight:700; }
+    .formula { background:var(--bg); border:1px solid var(--bd-soft); border-left:3px solid var(--acc); border-radius:8px; padding:12px 16px; margin:10px 0; font-family:'JetBrains Mono',Consolas,monospace; font-size:.82rem; line-height:1.9; color:#dfe5ec; }
+    .params { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 14px; }
+    .params span { background:var(--raised); border:1px solid var(--bd); border-radius:20px; padding:4px 13px; font-size:.78rem; color:#d6dde6; }
+    .fgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); gap:14px; margin:6px 0 16px; }
+    .fcard { background:var(--bg); border:1px solid var(--bd-soft); border-top:3px solid var(--acc); border-radius:9px; padding:12px 16px 8px; }
+    .fcard h5 { font-size:.72rem; text-transform:uppercase; letter-spacing:.7px; color:var(--acc); margin-bottom:8px; font-weight:700; }
+    .eq { font-family:'JetBrains Mono',Consolas,monospace; font-size:.8rem; line-height:1.6; color:#dfe5ec; padding:7px 0; border-bottom:1px dashed var(--bd); }
+    .eq:last-child { border-bottom:none; }
+    .destacado { background:var(--acc-soft); border:1px solid rgba(224,177,58,.45); border-radius:8px; padding:10px 14px; margin:10px 0; font-weight:600; font-size:.85rem; }
+    .gi { margin-bottom:8px; line-height:1.4; } .gi:last-child { margin-bottom:0; }
+    .gi .el { color:var(--muted); }
+    .nota { color:var(--muted); font-size:.78rem; margin:5px 0; }
+    .nota b { color:var(--txt); }
+    .fgrid { grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr)); }
+    @media (pointer:coarse) { .campo input, .campo select { font-size:16px; padding:11px 12px; } button { padding:12px 18px; } }
+    @media (max-width:760px) { body { padding:14px 12px 40px; height:100dvh; } .campo { flex:1 1 140px; } .campo input, .campo select { width:100%; } .barra { gap:10px; } .barra button { flex:1 1 140px; } }
+</style>
+</head>
+<body>
+
+<div class="cab"><h2>Cálculos y verificaciones normativas</h2><span>NSR-10 / ACI 318 · Diseño a flexión y separación del refuerzo</span></div>
+
+<div class="barra">
+    <div class="campo"><label for="in-trib">Ancho tributario (m)</label><input type="text" id="in-trib" value="1.00" title="Solo aplica a vigas: convierte cargas de área (kN/m²) en cargas lineales (kN/m)"></div>
+    <div class="campo"><label for="in-h">h manual (mm) · 0 = auto</label><input type="text" id="in-h" value="0"></div>
+    <div class="campo"><label for="sel-barra">Barra principal</label>
+        <select id="sel-barra"><option value="auto">Automática</option><option value="3">N.° 3 (9.5 mm)</option><option value="4">N.° 4 (12.7 mm)</option><option value="5">N.° 5 (15.9 mm)</option><option value="6">N.° 6 (19.1 mm)</option><option value="7">N.° 7 (22.2 mm)</option><option value="8">N.° 8 (25.4 mm)</option></select></div>
+    <div class="campo"><label for="sel-estribo">Estribo (Øe)</label>
+        <select id="sel-estribo"><option value="3" selected>N.° 3 (9.5 mm)</option><option value="4">N.° 4 (12.7 mm)</option><option value="0">Sin estribos (Øe = 0)</option></select></div>
+    <button onclick="recalcular(true)">Recalcular</button>
+    <button class="sec" onclick="irAlInforme()">Generar informe PDF</button>
+</div>
+
+<div id="resultado"></div>
+
+<!-- ===================================================================== -->
+<!-- MOTOR DE CÁLCULO (sin dependencias del DOM)                            -->
+<!-- ===================================================================== -->
+<script id="motor">
+const BARRAS = { '0':{d:0,A:0}, '3':{d:9.5,A:71}, '4':{d:12.7,A:129}, '5':{d:15.9,A:199}, '6':{d:19.1,A:284}, '7':{d:22.2,A:387}, '8':{d:25.4,A:510} };
+const DIV = { losa:{simple:20, uno:24, ambos:28, voladizo:10}, viga:{simple:16, uno:18.5, ambos:21, voladizo:8} };
+const COND_TXT = { simple:'Simplemente apoyada', uno:'Un extremo continuo', ambos:'Ambos extremos continuos', voladizo:'Voladizo' };
+
+function fmt(x, d) { d = (d === undefined) ? 2 : d; return (x === null || x === undefined || !isFinite(x)) ? '—' : Number(x).toFixed(d); }
+
+function calcular(est, def, op) {
+    const R = { advertencias:[], errores:[], verificaciones:[], cadenas:[], cargas:[], predim:[] };
+    const warn = t => { if (!R.advertencias.includes(t)) R.advertencias.push(t); };
+    const verif = (item, ok, detalle) => R.verificaciones.push({ item, ok: !!ok, detalle: detalle || '' });
+
+    if (!est || !est.vigas || !est.vigas.length) { R.errores.push('No hay vigas definidas en el entorno gráfico. Dibuje al menos una viga.'); return R; }
+    if (!def) { R.errores.push('No se encontraron las definiciones del sistema.'); return R; }
+
+    const esLosa = def.franjaUnitaria === 'SI';
+    const fy = def.fyPa / 1e6, fc = def.fcPa / 1e6, Es = def.EPa / 1e6;   // MPa
+    const b = def.b * 1000, r = def.recubrimientoMm;                        // mm
+    if (!(fy > 0 && fc > 0 && Es > 0 && b > 0)) { R.errores.push('fy, f’c, E y la base b deben ser mayores que cero.'); return R; }
+
+    const bar = BARRAS[op.barra === 'auto' ? (esLosa ? '3' : '5') : op.barra];
+    const estr = BARRAS[op.estribo || '3'];
+    const phiF = 0.90, gammaC = 24;
+    const Ec = 4700 * Math.sqrt(fc);
+    const kfy = Math.abs(fy - 420) < 1e-6 ? 1 : (0.4 + fy / 700);
+
+    // ---------------- Geometría y topología ----------------
+    const nodos = est.nodos.map(n => Object.assign({}, n));
+    const nodoById = {}; nodos.forEach(n => nodoById[n.id] = n);
+    const vigas = est.vigas.map(v => Object.assign({}, v)).filter(v => nodoById[v.n1] && nodoById[v.n2]);
+    const inc = {}; nodos.forEach(n => inc[n.id] = []);
+    vigas.forEach(v => {
+        const a = nodoById[v.n1], c = nodoById[v.n2];
+        v.L = Math.hypot(c.x - a.x, c.y - a.y);
+        inc[v.n1].push(v); inc[v.n2].push(v);
+    });
+    const dirDesde = (v, nid) => {
+        const a = nodoById[nid], o = nodoById[v.n1 === nid ? v.n2 : v.n1], L = Math.hypot(o.x - a.x, o.y - a.y) || 1;
+        return { x: (o.x - a.x) / L, y: (o.y - a.y) / L };
+    };
+    const esPasante = nid => {
+        const l = inc[nid]; if (l.length !== 2) return false;
+        const a = dirDesde(l[0], nid), c = dirDesde(l[1], nid);
+        return (a.x * c.x + a.y * c.y) < -0.995;   // vigas colineales
+    };
+    const tipoExt = nid => {
+        const n = nodoById[nid], deg = inc[nid].length;
+        if (n.apoyo === 3) return 'empotrado';
+        if (n.apoyo === 1 || n.apoyo === 2) return 'apoyo';
+        if (deg === 1) return 'libre';
+        warn(`El nodo ${n.label} es una unión de vigas no colineales sin apoyo asignado: se supone apoyo simple (viga apoyada sobre otra viga).`);
+        return 'apoyo';
+    };
+    const extremo = (v, nid) => {
+        let cur = v, node = nid, g = 0;
+        while (esPasante(node) && g++ < 500) {
+            const nxt = inc[node].find(x => x.id !== cur.id); if (!nxt) break;
+            cur = nxt; node = nxt.n1 === node ? nxt.n2 : nxt.n1;
+        }
+        return { viga: cur, nodo: node };
+    };
+
+    const visit = new Set(), cadenasRaw = [];
+    vigas.forEach(v0 => {
+        if (visit.has(v0.id)) return;
+        const e = extremo(v0, v0.n1), spans = [];
+        let cur = e.viga, node = e.nodo, g = 0;
+        while (cur && g++ < 500) {
+            const to = cur.n1 === node ? cur.n2 : cur.n1;
+            spans.push({ viga: cur, from: node, to }); visit.add(cur.id);
+            if (esPasante(to)) { cur = inc[to].find(x => x.id !== cur.id); node = to; } else break;
+        }
+        cadenasRaw.push(spans);
+    });
+
+    cadenasRaw.forEach(sp => {
+        for (let i = 1; i < sp.length; i++) {
+            const n = nodoById[sp[i].from];
+            if (n.apoyo === 0) warn(`El nodo ${n.label} (interior de una viga continua) no tiene apoyo asignado: se supone apoyo simple.`);
+        }
+    });
+
+    // ---------------- Paso 1: Predimensionamiento ----------------
+    const condTramo = (i, n, tS, tE) => {
+        if ((i === 0 && tS === 'libre') || (i === n - 1 && tE === 'libre')) return 'voladizo';
+        const cs = i > 0 || tS === 'empotrado', ce = i < n - 1 || tE === 'empotrado';
+        return (cs && ce) ? 'ambos' : (cs || ce) ? 'uno' : 'simple';
+    };
+    const info = cadenasRaw.map((spans, ci) => {
+        const n = spans.length, tS = tipoExt(spans[0].from), tE = tipoExt(spans[n - 1].to);
+        let valida = true, msg = '';
+        if (n === 1) {
+            if (tS === 'libre' && tE === 'libre') { valida = false; msg = 'Ambos extremos libres: estructura inestable.'; }
+            else if ((tS === 'libre' && tE === 'apoyo') || (tS === 'apoyo' && tE === 'libre')) { valida = false; msg = 'Voladizo con apoyo simple/articulado en el otro extremo: inestable. Asigne apoyo empotrado.'; }
+        } else if (tS === 'libre' || tE === 'libre') {
+            valida = false; msg = 'Viga continua con extremo libre (voladizo): no cubierta por el método de coeficientes. Asigne apoyo al nodo extremo o separe el voladizo.';
+        }
+        return { spans, n, tS, tE, valida, msg, ci };
+    });
+    let hmin = 0;
+    info.forEach(c => {
+        if (!c.valida) { R.errores.push(`Cadena ${c.ci + 1} (${c.spans.map(s => s.viga.label).join('–')}): ${c.msg}`); return; }
+        c.spans.forEach((s, i) => {
+            s.cond = condTramo(i, c.n, c.tS, c.tE);
+            const div = DIV[esLosa ? 'losa' : 'viga'][s.cond];
+            s.div = div; s.hmin = s.viga.L * 1000 / div * kfy;
+            hmin = Math.max(hmin, s.hmin);
+            R.predim.push({ viga: s.viga.label, desde: nodoById[s.from].label, hasta: nodoById[s.to].label, L: s.viga.L, cond: COND_TXT[s.cond], div, hmin: s.hmin });
+        });
+    });
+    if (R.errores.length) return R;
+    const paso = esLosa ? 10 : 50;
+    const h = op.hManual > 0 ? op.hManual : Math.ceil(hmin / paso - 1e-9) * paso;
+    if (op.hManual > 0 && op.hManual < hmin) warn(`El espesor manual (${op.hManual} mm) es menor que el mínimo normativo (${fmt(hmin, 1)} mm): debe verificarse deflexión con cálculo explícito.`);
+    verif('Espesor/altura adoptada ≥ mínimo normativo', h >= hmin - 1e-6, `h = ${h} mm ; hmin = ${fmt(hmin, 2)} mm`);
+
+    const D = h - r - estr.d - bar.d / 2;  // peralte efectivo: d = h − r − Øe − Øb/2
+    if (D <= 0) { R.errores.push('El peralte efectivo resulta nulo o negativo: revise h, recubrimiento y diámetros.'); return R; }
+
+    // Losas: cuantía mínima de retracción y temperatura sobre b·h (ACI 7.6.1.1 / NSR-10 C.7.12.2.1); Vigas: flexión (NSR-10 C.10.5.1) sobre b·d
+    const rhoMinLosa = fy < 420 ? 0.0020 : (Math.abs(fy - 420) < 1e-6 ? 0.0018 : Math.max(0.0018 * 420 / fy, 0.0014));
+    const AsMin = esLosa ? rhoMinLosa * b * h : Math.max(0.25 * Math.sqrt(fc) / fy, 1.4 / fy) * b * D;
+    const smax = Math.min(3 * h, 450);                                      // separación máxima del refuerzo principal
+
+    R.modo = esLosa ? 'Losa maciza en una dirección (franja unitaria)' : 'Viga rectangular';
+    R.entrada = { esLosa, b, h, hmin, kfy, r, d: D, fy, fc, Es, Ec, AsMin, rhoMinLosa, smax, barra: bar, estribo: estr, gammaC, phiF,
+                  paso, hManual: op.hManual > 0, bt: esLosa ? b / 1000 : op.anchoTrib };
+
+    // ---------------- Pasos 2 y 3: Cargas ----------------
+    const bt = R.entrada.bt;
+    const parseExtra = (txt, L) => {
+        const m = String(txt || '').match(/^\s*([-+]?[0-9]*\.?[0-9]+)\s*(.*)$/);
+        if (!m) return { w: 0, nota: 'valor no interpretable' };
+        const val = parseFloat(m[1]), u = (m[2] || '').replace(/\s/g, '').toLowerCase().replace('²', '2');
+        if (u === 'kn/m2' || u === 'kpa') return { w: val * bt, nota: `${fmt(val)} kN/m² × ${fmt(bt)} m` };
+        if (u === 'kn/m') return { w: val, nota: 'carga lineal' };
+        if (u === 'kn') { warn(`Carga puntual de ${fmt(val)} kN: el método de coeficientes exige cargas uniformes; se distribuyó como P/L sobre cada viga (aproximación).`); return { w: val / L, nota: `${fmt(val)} kN / ${fmt(L)} m (puntual distribuida)` }; }
+        warn(`Unidad "${m[2]}" no reconocida en una carga extra: se interpretó como kN/m.`);
+        return { w: val, nota: 'interpretada como kN/m' };
+    };
+    const limpia = n => String(n || '').replace(/\s*\(\s*[\d.,]+\s*kN\/m²\s*\)\s*$/, '');
+    const aplica = (asign, label) => !asign || asign === 'Todas' || asign === label;
+    const cargasPorViga = {};
+    vigas.forEach(v => {
+        const wpp = def.pesoPropio ? gammaC * (h / 1000) * (b / 1000) : 0;
+        const wpa = def.wpa * bt, wcu = def.wcu * bt;
+        let wD = wpp + wpa + wcu, wL = 0;
+        const ext = [];
+        (def.extras || []).filter(e => e.tipo === 'muerta').forEach(e => { const p = parseExtra(e.valorTexto, v.L); wD += p.w; ext.push({ nombre: e.nombre, w: p.w, tipo: 'D' }); });
+        const viv = [];
+        (def.vivas || []).filter(x => aplica(x.viga, v.label)).forEach(x => { const w = x.valor * bt; wL += w; viv.push({ nombre: limpia(x.nombre), w }); });
+        (def.extras || []).filter(e => e.tipo === 'viva' && aplica(e.viga, v.label)).forEach(e => { const p = parseExtra(e.valorTexto, v.L); wL += p.w; viv.push({ nombre: limpia(e.nombre), w: p.w }); });
+        const wu = 1.2 * wD + 1.6 * wL, ws = wD + wL;
+        cargasPorViga[v.label] = { label: v.label, L: v.L, wpp, wpa, wcu, ext, viv, wD, wL, wu, ws };
+    });
+    R.cargas = vigas.map(v => cargasPorViga[v.label]);
+    if (!(def.vivas || []).length && !(def.extras || []).some(e => e.tipo === 'viva')) warn('No se definió ninguna carga viva: se analiza solo con carga muerta.');
+    if (esLosa === false) warn(`Modo viga: las cargas de área se convirtieron a lineales con un ancho tributario de ${fmt(bt)} m (ajústelo en la barra superior).`);
+
+    // ---------------- Pasos 5 a 7: flexión (Whitney), acero mínimo y separación ----------------
+    function flexion(Mu) {
+        const o = { Mu, d: D, Asmin: AsMin, smax };
+        o.Rn = Mu * 1e6 / (phiF * b * D * D);
+        const t = 1 - 2 * o.Rn / (0.85 * fc);
+        if (Mu <= 0) { o.rho = 0; o.Ascalc = 0; }
+        else if (t < 0) { o.fallo = true; o.rho = NaN; o.Ascalc = NaN; }
+        else { o.rho = 0.85 * fc / fy * (1 - Math.sqrt(t)); o.Ascalc = o.rho * b * D; }
+        if (o.fallo) { o.a = NaN; o.AsReq = NaN; o.gobierna = '—'; o.ok = false; o.sepOk = false; o.sepMaxOk = false; o.desc = 'Sección insuficiente: aumente h'; return o; }
+        o.a = o.Ascalc * fy / (0.85 * fc * b);
+        o.AsReq = Math.max(o.Ascalc, AsMin);
+        o.gobierna = o.Ascalc >= AsMin ? 'Cálculo' : 'Mínimo';
+        const nb = op.barra === 'auto' ? (esLosa ? '3' : '5') : op.barra;
+        if (esLosa) {
+            const sCalc = bar.A * b / o.AsReq;
+            o.sCalc = sCalc;
+            o.s = Math.max(Math.min(Math.floor(sCalc / 10) * 10, smax), 10);
+            o.Asprov = bar.A * b / o.s;
+            o.sepLibre = o.s - bar.d;
+            o.sepOk = true;
+            o.desc = `N.°${nb} c/${o.s} mm`;
+        } else {
+            o.n = Math.max(2, Math.ceil(o.AsReq / bar.A - 1e-9));
+            o.Asprov = o.n * bar.A;
+            o.s = (b - 2 * r - 2 * estr.d - bar.d) / (o.n - 1);          // separación entre ejes de barras
+            o.sepLibre = o.s - bar.d;
+            o.sepOk = o.sepLibre >= Math.max(25, bar.d);                   // las barras caben en una capa
+            o.desc = `${o.n} N.°${nb}` + (o.sepOk ? '' : ' (no caben en una capa)');
+        }
+        o.sepMaxOk = o.s <= smax + 1e-9;
+        const aProv = o.Asprov * fy / (0.85 * fc * b);
+        o.phiMn = phiF * o.Asprov * fy * (D - aProv / 2) / 1e6;
+        o.ok = Mu <= o.phiMn + 1e-9;
+        return o;
+    }
+    let _nSec = 0;
+
+    // ---------------- Pasos 4 a 7: análisis y diseño por cadena ----------------
+    const frac = (n, d) => ({ c: n / d, t: `${n}/${d}` });
+
+    info.forEach(c => {
+        const spans = c.spans, n = c.n;
+        const nom = nid => nodoById[nid].label;
+        const sp = spans.map(s => ({ label: s.viga.label, desde: nom(s.from), hasta: nom(s.to), L: s.viga.L, cond: s.cond, c: cargasPorViga[s.viga.label] }));
+        const secciones = [];
+        const mk = o => {
+            o.wu = 1.2 * o.wD + 1.6 * o.wL; o.ws = o.wD + o.wL;
+            o.Mu = o.coef * o.wu * o.ln * o.ln;
+            _nSec++;
+            secciones.push(o); return secciones.length - 1;
+        };
+        const pick = (a, bb) => (a.c.wu >= bb.c.wu ? a : bb);
+        const nombreCad = `Cadena ${c.ci + 1} (${spans.map(s => s.viga.label).join(' – ')})`;
+        const aplic = [];
+        let metodo, metodoOK = true;
+
+        if (n >= 2) {
+            metodo = 'Método de coeficientes (ACI 318-25 §6.5 / NSR-10 C.8.3.3)';
+            let razon = 1; for (let i = 0; i < n - 1; i++) razon = Math.max(razon, Math.max(sp[i].L, sp[i + 1].L) / Math.min(sp[i].L, sp[i + 1].L));
+            let maxLD = 0; sp.forEach(s => { maxLD = Math.max(maxLD, s.c.wD > 0 ? s.c.wL / s.c.wD : (s.c.wL > 0 ? Infinity : 0)); });
+            aplic.push({ t: 'Existencia de dos o más vanos', ok: true, v: `${n} vanos` });
+            aplic.push({ t: 'Vanos aproximadamente iguales (mayor ≤ 1.2 menor)', ok: razon <= 1.2 + 1e-9, v: `relación máxima = ${fmt(razon)}` });
+            aplic.push({ t: 'Cargas uniformemente distribuidas', ok: true, v: 'sí (cargas lineales uniformes)' });
+            aplic.push({ t: 'Carga viva ≤ 3 × carga muerta (L ≤ 3D)', ok: maxLD <= 3 + 1e-9, v: `L/D máx = ${fmt(maxLD)}` });
+            aplic.push({ t: 'Elementos prismáticos (sección constante)', ok: true, v: 'sí' });
+            metodoOK = aplic.every(a => a.ok);
+            if (!metodoOK) warn(`${nombreCad}: no cumple todas las condiciones del método de coeficientes; los resultados son aproximados y debe hacerse análisis elástico.`);
+            for (let j = 0; j <= n; j++) {
+                if (j === 0 || j === n) {
+                    const s = j === 0 ? sp[0] : sp[n - 1], t = j === 0 ? c.tS : c.tE;
+                    const f = t === 'empotrado' ? frac(1, 16) : frac(1, 24);
+                    mk({ tipo: 'neg', tit: `Apoyo exterior · ${t === 'empotrado' ? 'columna/empotrado' : 'viga de borde'}`, el: j === 0 ? s.desde : s.hasta, ubic: `Apoyo exterior ${j === 0 ? s.desde : s.hasta} (${t === 'empotrado' ? 'columna/empotrado' : 'viga de borde'})`, coefTxt: f.t, coef: f.c, ln: s.L, wD: s.c.wD, wL: s.c.wL, nodo: j === 0 ? s.desde : s.hasta, exterior: true, empot: t === 'empotrado' });
+                } else {
+                    const A = sp[j - 1], B = sp[j], w = pick(A, B);
+                    const f = n === 2 ? frac(1, 9) : (j === 1 || j === n - 1) ? frac(1, 10) : frac(1, 11);
+                    mk({ tipo: 'neg', tit: `Apoyo interior · ${n === 2 ? 'dos vanos' : (j === 1 || j === n - 1) ? '1.ª cara interior' : 'demás apoyos'}`, el: A.hasta, ubic: `Apoyo interior ${A.hasta} (${n === 2 ? 'dos vanos' : (j === 1 || j === n - 1) ? '1.ª cara interior' : 'demás apoyos'})`, coefTxt: f.t, coef: f.c, ln: (A.L + B.L) / 2, wD: w.c.wD, wL: w.c.wL, nodo: A.hasta, exterior: false });
+                }
+            }
+            for (let i = 0; i < n; i++) {
+                const f = (i === 0 || i === n - 1) ? frac(1, 14) : frac(1, 16);
+                mk({ tipo: 'pos', tit: `Momento positivo · ${(i === 0 || i === n - 1) ? 'vano extremo' : 'vano interior'}`, el: sp[i].label, ubic: `Luz ${sp[i].label} – positivo (${(i === 0 || i === n - 1) ? 'vano extremo' : 'vano interior'})`, coefTxt: f.t, coef: f.c, ln: sp[i].L, wD: sp[i].c.wD, wL: sp[i].c.wL });
+            }
+        } else {
+            const s = sp[0];
+            metodo = 'Análisis estático de tramo único (el método de coeficientes requiere dos o más vanos)';
+            aplic.push({ t: 'Tramo único: se usan las ecuaciones de la estática', ok: true, v: `${c.tS} – ${c.tE}` });
+            const sec = (tipo, ubic, f, nodo, ext, emp, tit, el) => mk({ tipo, tit, el, ubic, coefTxt: f.t, coef: f.c, ln: s.L, wD: s.c.wD, wL: s.c.wL, nodo, exterior: !!ext, empot: !!emp });
+            if (c.tS === 'libre' || c.tE === 'libre') {
+                const fijo = c.tS === 'libre' ? s.hasta : s.desde;
+                sec('neg', `Empotramiento ${fijo} (voladizo)`, frac(1, 2), fijo, true, true, 'Empotramiento · voladizo', fijo);
+            } else if (c.tS === 'apoyo' && c.tE === 'apoyo') {
+                sec('pos', `Luz ${s.label} – positivo (apoyada–apoyada)`, frac(1, 8), undefined, false, false, 'Momento positivo · apoyada–apoyada', s.label);
+            } else if (c.tS === 'empotrado' && c.tE === 'empotrado') {
+                sec('neg', `Empotramiento ${s.desde}`, frac(1, 12), s.desde, true, true, 'Empotramiento · biempotrada', s.desde);
+                sec('neg', `Empotramiento ${s.hasta}`, frac(1, 12), s.hasta, true, true, 'Empotramiento · biempotrada', s.hasta);
+                sec('pos', `Luz ${s.label} – positivo (biempotrada)`, frac(1, 24), undefined, false, false, 'Momento positivo · biempotrada', s.label);
+            } else {
+                const fS = c.tS === 'empotrado';
+                sec('neg', `Empotramiento ${fS ? s.desde : s.hasta}`, frac(1, 8), fS ? s.desde : s.hasta, true, true, 'Empotramiento · empotrada–apoyada', fS ? s.desde : s.hasta);
+                sec('pos', `Luz ${s.label} – positivo (empotrada–apoyada)`, { c: 9 / 128, t: '9/128' }, undefined, false, false, 'Momento positivo · empotrada–apoyada', s.label);
+            }
+        }
+
+        // Verificaciones
+        if (n >= 2) verif(`${nombreCad}: aplicabilidad del método de coeficientes`, metodoOK, aplic.filter(a => !a.ok).map(a => a.t).join('; '));
+
+        R.cadenas.push({ id: c.ci + 1, nombre: nombreCad, tS: c.tS, tE: c.tE, metodo, metodoOK, aplic,
+            tramos: sp.map(s => ({ label: s.label, desde: s.desde, hasta: s.hasta, L: s.L, cond: s.cond, wD: s.c.wD, wL: s.c.wL, wu: s.c.wu, ws: s.c.ws })), secciones });
+    });
+
+    // ---------- Sección gobernante: el momento último mayor define el diseño de todos los elementos ----------
+    let gov = null;
+    R.cadenas.forEach(c => c.secciones.forEach(sc => { if (!gov || sc.Mu > gov.sc.Mu) gov = { sc, c }; }));
+    const gf = flexion(gov.sc.Mu);
+    R.gov = { Mu: gov.sc.Mu, tit: gov.sc.tit || gov.sc.ubic, el: gov.sc.el || '', cadena: gov.c.id, nombreCadena: gov.c.nombre, coefTxt: gov.sc.coefTxt, ln: gov.sc.ln, wu: gov.sc.wu, tipo: gov.sc.tipo, flex: gf };
+    const nomGov = `Sección gobernante (${R.gov.tit}${R.gov.el ? ' · ' + R.gov.el : ''})`;
+    verif(`${nomGov}: sección suficiente`, !gf.fallo, gf.fallo ? 'La sección no resiste el momento: aumente h o b' : `Mu = ${fmt(gov.sc.Mu)} kN·m ; ρ = ${fmt(gf.rho, 5)}`);
+    if (!gf.fallo) {
+        verif(`${nomGov}: φMn ≥ Mu`, gf.ok, `Mu = ${fmt(gov.sc.Mu)} kN·m ; φMn = ${fmt(gf.phiMn)} kN·m`);
+        verif(`${nomGov}: separación s ≤ mín(3h, 450 mm)`, gf.sepMaxOk, `s = ${fmt(gf.s, 1)} mm ≤ ${fmt(smax, 0)} mm`);
+        if (!esLosa) verif(`${nomGov}: refuerzo cabe en una capa`, gf.sepOk, `separación libre = ${fmt(gf.sepLibre, 1)} mm`);
+    }
+
+    R.calculos = { secciones: _nSec, flexionesUnicas: 1 };
+    R.cumple = R.verificaciones.every(v => v.ok);
+    R.resumen = { total: R.verificaciones.length, fallas: R.verificaciones.filter(v => !v.ok).length };
+    return R;
+}
+</script>
+
+<!-- ===================================================================== -->
+<!-- PRESENTACIÓN DE RESULTADOS                                             -->
+<!-- ===================================================================== -->
+<script>
+const T = (heads, rows) => `<table class="res"><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+const OKS = b => b ? '<span class="ok">✔ Cumple</span>' : '<span class="no">✘ No cumple</span>';
+
+const K = (...p) => `<div class="keep">${p.join('')}</div>`;
+const rnd = (x, d) => (typeof x === 'number' && isFinite(x)) ? +x.toFixed(d === undefined ? 5 : d) : x;
+function agrupar(items, keyFn) {
+    const m = new Map();
+    items.forEach(it => { const k = keyFn(it); if (!m.has(k)) m.set(k, []); m.get(k).push(it); });
+    return Array.from(m.values());
+}
+
+function construirPasos(R) {
+    const P = [], e = R.entrada, es = e.esLosa, multi = R.cadenas.length > 1;
+    const secs = R.cadenas.flatMap(c => c.secciones.map(s => ({ s, c })));
+    const gSec = agrupar(secs, x => [x.s.tipo, x.s.coefTxt, rnd(x.s.ln), rnd(x.s.wD), rnd(x.s.wL), x.s.exterior ? 1 : 0].join('|'));
+    const ubic = g => {
+        const m = new Map();
+        g.forEach(x => { const t = x.s.tit || x.s.ubic; if (!m.has(t)) m.set(t, []); m.get(t).push((multi ? `C${x.c.id} · ` : '') + (x.s.el || '')); });
+        return Array.from(m, ([t, els]) => `<div class="gi"><b>${t}</b> <span class="el">(${els.join(', ')})</span></div>`).join('');
+    };
+    const nUnicos = (n, g) => `<p class="nota">Cálculos únicos: los elementos con las mismas características (tipo, coeficiente, luz y cargas) se calculan una sola vez y se listan juntos en la primera columna. ${n} → <b>${g}</b> cálculo(s) único(s).</p>`;
+
+    // 01
+    const gPre = agrupar(R.predim, p => [p.cond, rnd(p.L), p.div, rnd(p.hmin)].join('|'));
+    P.push({ num: '01', titulo: 'Predimensionamiento (espesor / altura mínima)', html:
+        K(`<p class="nota">${es ? 'ACI 318-25 Tabla 7.3.1.1 (NSR-10 C.9.5.2)' : 'ACI 318-25 Tabla 9.3.1.1 (NSR-10 C.9.5.2)'} para fy = 420 MPa${e.kfy !== 1 ? ` · se aplica el factor (0.4 + fy/700) = ${fmt(e.kfy, 3)}` : ''}. Se adopta el caso que genera el mayor espesor.</p>`,
+          nUnicos(R.predim.length + ' tramos', gPre.length),
+          T(['Tramos', 'Ln (m)', 'Condición de apoyo', 'Divisor', 'h<sub>min</sub> (mm)'], gPre.map(g => [g.map(p => `${p.viga} (${p.desde}–${p.hasta})`).join('<br>'), fmt(g[0].L), g[0].cond, g[0].div, fmt(g[0].hmin, 2)]))) +
+        K(`<div class="formula">h<sub>min</sub> gobernante = ${fmt(e.hmin, 2)} mm  →  h adoptado = ${fmt(e.h, 0)} mm ${e.hManual ? '(valor manual)' : `(redondeo a múltiplos de ${e.paso} mm)`}</div>`,
+          `<div class="formula">d = h − r − Ø<sub>e</sub> − Ø<sub>b</sub>/2 = ${e.h} − ${e.r} − ${e.estribo.d} − ${e.barra.d}/2 = <b>${fmt(e.d, 2)} mm</b>${e.estribo.d === 0 ? ' &nbsp;(estribos no incluidos: Ø<sub>e</sub> = 0)' : ''}</div>`) });
+    // 02
+    const gCar = agrupar(R.cargas, c => [rnd(c.wpp), rnd(c.wpa), rnd(c.wcu), JSON.stringify(c.ext.map(x => [x.nombre, rnd(x.w)])), JSON.stringify(c.viv.map(x => [x.nombre, rnd(x.w)]))].join('|'));
+    P.push({ num: '02', titulo: 'Avalúo de cargas de servicio', html:
+        K(`<p class="nota">${es ? 'Franja unitaria b = ' + fmt(e.b / 1000) + ' m: kN/m² → kN/m.' : 'Cargas de área × ancho tributario (' + fmt(e.bt) + ' m); peso propio con b × h.'} W<sub>pp</sub> = γc·h·b = ${e.gammaC} × ${fmt(e.h / 1000, 3)} × ${fmt(e.b / 1000)} = ${fmt(R.cargas[0].wpp, 3)} kN/m.</p>`,
+          T(['Vigas', 'Peso propio', 'Particiones / Fachada', 'Afinado / Cubierta', 'Extras D', 'D total (kN/m)', 'Cargas vivas (kN/m)', 'L total (kN/m)'],
+            gCar.map(g => { const c = g[0]; return [g.map(x => x.label).join(', '), fmt(c.wpp, 3), fmt(c.wpa), fmt(c.wcu), fmt(c.ext.reduce((a, x) => a + x.w, 0)), '<b>' + fmt(c.wD, 3) + '</b>',
+                c.viv.length ? c.viv.map(x => `${x.nombre}: ${fmt(x.w)}`).join('<br>') : '—', '<b>' + fmt(c.wL, 3) + '</b>']; }))) });
+    // 03
+    const gU = agrupar(R.cargas, c => [rnd(c.wD), rnd(c.wL)].join('|'));
+    P.push({ num: '03', titulo: 'Carga última de diseño  U = 1.2 D + 1.6 L', html:
+        K(T(['Vigas', '1.2 D (kN/m)', '1.6 L (kN/m)', 'w<sub>u</sub> (kN/m)', 'w<sub>s</sub> = D + L (kN/m)'],
+            gU.map(g => { const c = g[0]; return [g.map(x => x.label).join(', '), fmt(1.2 * c.wD, 3), fmt(1.6 * c.wL, 3), '<b>' + fmt(c.wu, 3) + '</b>', fmt(c.ws, 3)]; }))) });
+    // 04
+    const gCad = agrupar(R.cadenas, c => JSON.stringify([c.metodo, c.tS, c.tE, c.aplic.map(a => [a.t, a.ok, a.v])]));
+    let h4 = '';
+    gCad.forEach(g => {
+        const c = g[0];
+        h4 += K(`<h4>${g.map(x => x.nombre).join('<br>')}</h4><p class="nota">${c.metodo}. Apoyo inicial: ${c.tS}; apoyo final: ${c.tE}.</p>`,
+                T(['Condición de aplicabilidad', 'Valor', 'Estado'], c.aplic.map(a => [a.t, a.v, OKS(a.ok)])));
+    });
+    h4 += K(nUnicos(secs.length + ' secciones', gSec.length),
+            T(['Secciones que comparten el cálculo', 'Coef. C', 'Ln (m)', 'w<sub>u</sub> (kN/m)', 'M<sub>u</sub> = C·w<sub>u</sub>·Ln² (kN·m)'],
+              gSec.map(g => { const s = g[0].s; return [ubic(g), s.coefTxt, fmt(s.ln), fmt(s.wu, 3), '<b>' + fmt(s.Mu) + '</b>']; })));
+    P.push({ num: '04', titulo: 'Análisis estructural (momentos últimos)', html: h4 });
+    const G = R.gov, gf = G.flex, govTxt = `${G.tit}${G.el ? ' (' + (multi ? 'C' + G.cadena + ' · ' : '') + G.el + ')' : ''}`;
+    P[3].html += K(`<div class="destacado">Momento gobernante: M<sub>u</sub> = ${fmt(G.Mu)} kN·m → ${govTxt}. Los pasos 05 a 07 se calculan únicamente para este momento y el refuerzo resultante se adopta para todos los elementos.</div>`);
+    // 05
+    const FC = (t, ...l) => `<div class="fcard"><h5>${t}</h5>${l.map(x => `<div class="eq">${x}</div>`).join('')}</div>`;
+    const params = `<div class="params"><span>f'c = ${fmt(e.fc)} MPa</span><span>fy = ${fmt(e.fy)} MPa</span><span>b = ${fmt(e.b, 0)} mm</span><span>d = ${fmt(e.d, 2)} mm</span><span>φ = ${fmt(e.phiF, 2)}</span><span>M<sub>u</sub> = ${fmt(G.Mu)} kN·m</span></div>`;
+    const grid = `<div class="fgrid">` +
+        FC('Flexión (bloque de Whitney)', `R<sub>n</sub> = M<sub>u</sub> / (φ·b·d²)`, `ρ = (0.85·f'c/fy)·[1 − √(1 − 2·R<sub>n</sub>/(0.85·f'c))]`, `A<sub>s</sub> = ρ·b·d`, `a = A<sub>s</sub>·fy / (0.85·f'c·b)`) +
+        `</div>`;
+    P.push({ num: '05', titulo: 'Diseño a flexión (bloque de Whitney)', html:
+        K(`<p class="nota">Diseño de la sección gobernante: ${govTxt}. La profundidad del bloque a se obtiene del área de acero, la resistencia del concreto y la base b.</p>`, params, grid,
+          T(['Sección gobernante', 'M<sub>u</sub> (kN·m)', 'R<sub>n</sub> (MPa)', 'ρ', 'A<sub>s,cálc</sub> (mm²)', 'a (mm)'],
+            [[govTxt, fmt(G.Mu), fmt(gf.Rn, 4), fmt(gf.rho, 5), '<b>' + fmt(gf.Ascalc, 1) + '</b>', fmt(gf.a, 1)]])) });
+    // 06
+    P.push({ num: '06', titulo: 'Verificación de acero mínimo', html:
+        K(es ? `<div class="formula">A<sub>s,min</sub> = ${e.rhoMinLosa.toFixed(4)} · b · h = ${e.rhoMinLosa.toFixed(4)} × ${fmt(e.b, 0)} × ${fmt(e.h, 0)} = <b>${fmt(e.AsMin, 1)} mm²</b> &nbsp;(retracción y temperatura, ACI 7.6.1.1)</div>`
+             : `<div class="formula">A<sub>s,min</sub> = máx(0.25·√f'c / fy ; 1.4 / fy)·b·d = <b>${fmt(e.AsMin, 1)} mm²</b> &nbsp;(flexión, NSR-10 C.10.5.1)</div>`,
+          T(['Sección gobernante', 'A<sub>s,cálc</sub> (mm²)', 'A<sub>s,min</sub> (mm²)', 'Gobierna', 'A<sub>s,req</sub> (mm²)'],
+            [[govTxt, fmt(gf.Ascalc, 1), fmt(gf.Asmin, 1), gf.gobierna, '<b>' + fmt(gf.AsReq, 1) + '</b>']])) });
+    // 07
+    P.push({ num: '07', titulo: 'Selección del refuerzo y separación entre barras', html:
+        K(`<div class="formula">Separación máxima: s ≤ mín(3h ; 450 mm) = mín(${fmt(3 * e.h, 0)} ; 450) = <b>${fmt(e.smax, 0)} mm</b></div>`,
+          `<p class="nota">${es ? 'Losa: la separación se adopta como el múltiplo de 10 mm que entrega el A<sub>s,req</sub> sin superar s<sub>max</sub>.' : 'Viga: s es la separación entre ejes de las barras en una sola capa; además la separación libre debe ser ≥ máx(25 mm ; Ø<sub>b</sub>).'}</p>`,
+          T(['Sección gobernante', 'A<sub>s,req</sub> (mm²)', 'Refuerzo adoptado', 'A<sub>s,prov</sub> (mm²)', 's (mm)', 's<sub>max</sub> (mm)', 'φM<sub>n</sub> (kN·m)', 'M<sub>u</sub> (kN·m)', 'Estado'],
+            [[govTxt, fmt(gf.AsReq, 1), '<b>' + gf.desc + '</b>', fmt(gf.Asprov, 1), fmt(gf.s, es ? 0 : 1), fmt(e.smax, 0), fmt(gf.phiMn), fmt(G.Mu), OKS(gf.ok && gf.sepMaxOk && (es || gf.sepOk))]])) });
+    return P;
+}
+
+// ---------------- Interfaz ----------------
+let ultimaFirma = null;
+function leerOpciones() {
+    return { anchoTrib: Math.max(parseFloat(document.getElementById('in-trib').value) || 1, 0.01),
+             hManual: parseFloat(document.getElementById('in-h').value) || 0,
+             barra: document.getElementById('sel-barra').value, estribo: document.getElementById('sel-estribo').value };
+}
+function guardarOpciones() { try { localStorage.setItem('opciones_calculo_ui', JSON.stringify(leerOpciones())); } catch (e) {} }
+function restaurarOpciones() {
+    try {
+        const o = JSON.parse(localStorage.getItem('opciones_calculo_ui')); if (!o) return;
+        document.getElementById('in-trib').value = o.anchoTrib; document.getElementById('in-h').value = o.hManual;
+        document.getElementById('sel-barra').value = o.barra; document.getElementById('sel-estribo').value = o.estribo;
+    } catch (e) {}
+}
+function parse(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+
+function recalcular(forzar) {
+    const rawE = localStorage.getItem('estructura_completa'), rawD = localStorage.getItem('definiciones_sistema');
+    const op = leerOpciones();
+    const firma = rawE + '|' + rawD + '|' + JSON.stringify(op);
+    if (!forzar && firma === ultimaFirma) return;
+    ultimaFirma = firma; guardarOpciones();
+    let R;
+    try { R = calcular(parse('estructura_completa'), parse('definiciones_sistema'), op); }
+    catch (err) { R = { errores: ['Error interno de cálculo: ' + err.message], advertencias: [], verificaciones: [], cadenas: [] }; }
+    R.pasos = (R.errores.length || !R.entrada) ? [] : construirPasos(R);
+    try { localStorage.setItem('resultados_calculo', JSON.stringify({ generado: new Date().toISOString(), opciones: op, resultados: R })); } catch (e) {}
+    const abiertos = Array.from(document.querySelectorAll('details.paso')).map(d => d.open);
+    let html = '';
+    if (R.errores.length) html += `<div class="estado err">No se puede calcular:<ul>${R.errores.map(x => `<li style="margin-left:18px">${x}</li>`).join('')}</ul></div>`;
+    else html += `<div class="estado ${R.cumple ? 'ok' : 'no'}"><span>${R.cumple ? '✔ La estructura cumple todas las verificaciones' : '✘ Hay ' + R.resumen.fallas + ' verificación(es) que no cumplen'} (${R.resumen.total - R.resumen.fallas}/${R.resumen.total})</span><span class="chip">${R.modo}</span><span class="chip">h = ${R.entrada.h} mm</span><span class="chip">d = ${fmt(R.entrada.d, 1)} mm</span></div>`;
+    if (R.advertencias.length) html += `<div class="avisos"><b>Avisos y supuestos:</b><ul>${R.advertencias.map(x => `<li>${x}</li>`).join('')}</ul></div>`;
+    if (!R.errores.length) {
+        const falla = R.verificaciones.filter(v => !v.ok);
+        if (falla.length) html += `<div class="avisos rojo"><b>Verificaciones que no cumplen:</b><ul>${falla.map(v => `<li>${v.item} — ${v.detalle}</li>`).join('')}</ul></div>`;
+    }
+    R.pasos.forEach((p, i) => { html += `<details class="paso" ${abiertos[i] === false ? '' : 'open'}><summary><span class="num">${p.num}</span>${p.titulo}</summary><div class="cuerpo">${p.html}</div></details>`; });
+    document.getElementById('resultado').innerHTML = html;
+}
+
+function irAlInforme() {
+    recalcular(true);
+    if (window.parent && window.parent !== window && typeof window.parent.mostrarInforme === 'function') window.parent.mostrarInforme(true);
+    else window.open('Informe.html?auto=1', '_blank');
+}
+
+restaurarOpciones();
+['in-trib', 'in-h', 'sel-barra', 'sel-estribo'].forEach(id => { const el = document.getElementById(id); el.addEventListener('change', () => recalcular(true)); });
+recalcular(true);
+setInterval(() => recalcular(false), 700);
+window.addEventListener('storage', () => recalcular(false));
+</script>
+</body>
+</html>

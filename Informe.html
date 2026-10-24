@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe de Resultados – Diseño Estructural</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #12161c; color: #222; height: 100vh; overflow-y: auto; }
+    .toolbar { position: sticky; top: 0; z-index: 10; background: #171c23; padding: 12px 22px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid #2c3542; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+    .toolbar span { color: #e8ecf1; font-weight: 700; font-size: 1rem; flex: 1; letter-spacing: .2px; }
+    .toolbar button { background: #e0b13a; color: #1a1405; border: none; padding: 9px 18px; border-radius: 7px; font-weight: 700; font-size: .85rem; cursor: pointer; transition: .15s; }
+    .toolbar button:hover { background: #f0c24d; }
+    .toolbar button.sec { background: #252d38; color: #e8ecf1; border: 1px solid #2c3542; }
+    #estado { color: #8b97a7; font-size: 0.82rem; }
+
+    #informe { width: 190mm; margin: 22px auto 40px; box-shadow: 0 10px 40px rgba(0,0,0,.55); background: #fff; padding: 0; font-size: 9.5pt; line-height: 1.35; }
+    .portada { padding: 10mm 0 6mm; border-bottom: 3px solid #e0b13a; margin-bottom: 6mm; }
+    .portada h1 { font-size: 20pt; color: #1e1e1e; }
+    .portada p { color: #555; margin-top: 2mm; }
+    h2.sec { font-size: 13pt; background: #171c23; color: #e0b13a; padding: 2.2mm 3.5mm; margin: 6mm 0 3mm; border-left: 3mm solid #e0b13a; }
+    h3.sub { font-size: 10.5pt; color: #222; border-bottom: 1px solid #ccc; margin: 4mm 0 2mm; padding-bottom: 1mm; }
+    h4 { font-size: 9.5pt; margin: 3mm 0 1.5mm; color: #333; }
+    table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3mm; font-size: 8pt; page-break-inside: auto; }
+    tr { page-break-inside: avoid; }
+    th { background: #e8e8e8; border: 1px solid #aaa; padding: 1.2mm 1.5mm; text-align: center; }
+    td { border: 1px solid #bbb; padding: 1.1mm 1.5mm; text-align: center; }
+    td:first-child { text-align: left; }
+    table.kv td:first-child { background: #f4f4f4; font-weight: 600; width: 42%; }
+    table.kv td:last-child { text-align: left; }
+    .ok { color: #1a7f1a; font-weight: bold; } .no { color: #c62828; font-weight: bold; }
+    .params { display: flex; flex-wrap: wrap; gap: 1.5mm; margin: 2mm 0 3mm; }
+    .params span { background: #f1f1f1; border: 1px solid #ddd; border-radius: 1mm; padding: .8mm 2.4mm; font-size: 8pt; }
+    .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin: 2mm 0 3mm; }
+    .fcard { border: 1px solid #d6d6d6; border-top: 0.8mm solid #e0b13a; border-radius: 1mm; padding: 2mm 3mm; background: #fafafa; page-break-inside: avoid; }
+    .fcard h5 { font-size: 8pt; text-transform: uppercase; letter-spacing: .3mm; margin-bottom: 1.2mm; color: #444; }
+    .eq { font-family: Consolas, monospace; font-size: 8.3pt; line-height: 1.6; padding: 1mm 0; border-bottom: 1px dotted #ccc; }
+    .eq:last-child { border-bottom: 0; }
+    .gi { margin-bottom: 1.2mm; line-height: 1.3; text-align: left; } .gi .el { color: #666; }
+    td:first-child { min-width: 30mm; }
+    .destacado { background: #fff8e1; border: 1px solid #c9a400; border-radius: 1mm; padding: 2mm 3mm; margin: 2mm 0; font-weight: bold; font-size: 9pt; page-break-inside: avoid; }
+    .formula { line-height: 1.8; padding: 2mm 3mm; background: #f6f6f6; border-left: 3px solid #e0b13a; padding: 1.5mm 3mm; margin: 1.5mm 0; font-family: Consolas, monospace; font-size: 8.5pt; page-break-inside: avoid; }
+    .nota { color: #555; font-size: 8pt; margin: 1.5mm 0; }
+    .estado-global { padding: 3mm; border-radius: 2mm; font-weight: bold; margin: 3mm 0; }
+    .estado-global.ok { background: #e6f4e6; border: 1px solid #1a7f1a; }
+    .estado-global.no { background: #fdeaea; border: 1px solid #c62828; }
+    .avisos { background: #fff8e1; border: 1px dashed #c9a400; padding: 2mm 4mm; margin: 2mm 0; font-size: 8.5pt; }
+    .avisos li { margin-left: 4mm; }
+    .figura { text-align: center; page-break-inside: avoid; }
+    .figura img { max-width: 100%; border: 1px solid #999; }
+    .figura .pie { font-size: 8pt; color: #555; margin-top: 1mm; }
+    .salto { page-break-before: always; }
+    .keep { page-break-inside: avoid; }
+    .figura img { max-height: 95mm; width: auto; }
+    h2.sec.bloque { margin-top: 0; }
+    td small { color: #666; }
+    .vacio { padding: 20mm; text-align: center; color: #666; }
+    @media print { body { background: #fff; } .toolbar { display: none; } #informe { margin: 0; } }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+    <span>Informe de resultados</span>
+    <div id="estado"></div>
+    <button class="sec" onclick="cargar()">Actualizar</button>
+    <button onclick="generarPDF()">Descargar PDF</button>
+</div>
+
+<div id="informe"></div>
+
+<script>
+function leer(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+function fmt(x, d) { d = (d === undefined) ? 2 : d; return (x === null || x === undefined || !isFinite(x)) ? '—' : Number(x).toFixed(d); }
+function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+const limpia = n => String(n || '').replace(/\s*\(\s*[\d.,]+\s*kN\/m²\s*\)\s*$/, '');
+function agr(items, keyFn) { const m = new Map(); items.forEach(i => { const k = keyFn(i); if (!m.has(k)) m.set(k, []); m.get(k).push(i); }); return Array.from(m.values()); }
+const KV = rows => `<table class="kv"><tbody>${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</tbody></table>`;
+const TB = (heads, rows) => `<table><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+
+// ---------- Dibujo de la estructura definida en el entorno gráfico ----------
+function dibujarEstructura(est) {
+    const W = 1400, H = 640, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+    if (!est || !est.nodos || !est.nodos.length) return null;
+    const xs = est.nodos.map(n => n.x), ys = est.nodos.map(n => n.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const aw = (maxX - minX) || 2, ah = (maxY - minY) || 2, m = 110;
+    const esc_ = Math.min((W - 2 * m) / aw, (H - 2 * m) / ah, 220);
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    const P = (x, y) => ({ x: W / 2 + (x - cx) * esc_, y: H / 2 - (y - cy) * esc_ });
+    const byId = {}; est.nodos.forEach(n => byId[n.id] = n);
+    // grilla suave
+    g.strokeStyle = '#eeeeee'; g.lineWidth = 1;
+    for (let x = 0; x <= W; x += 40) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+    for (let y = 0; y <= H; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    // vigas
+    est.vigas.forEach(v => {
+        const a = byId[v.n1], b = byId[v.n2]; if (!a || !b) return;
+        const p1 = P(a.x, a.y), p2 = P(b.x, b.y);
+        g.strokeStyle = '#222'; g.lineWidth = 7; g.lineCap = 'round'; g.beginPath(); g.moveTo(p1.x, p1.y); g.lineTo(p2.x, p2.y); g.stroke();
+        const L = Math.hypot(b.x - a.x, b.y - a.y);
+        const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+        g.fillStyle = '#b58900'; g.font = 'bold 26px sans-serif'; g.textAlign = 'center';
+        g.fillText(v.label, mx, my - 18);
+        g.fillStyle = '#555'; g.font = '20px sans-serif'; g.fillText(L.toFixed(2) + ' m', mx, my + 36);
+    });
+    // nodos y apoyos
+    est.nodos.forEach(n => {
+        const p = P(n.x, n.y);
+        g.save(); g.translate(p.x, p.y); g.strokeStyle = '#d00000'; g.lineWidth = 4; g.beginPath();
+        if (n.apoyo === 1) { g.arc(0, 26, 12, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.moveTo(-20, 40); g.lineTo(20, 40); g.stroke(); }
+        else if (n.apoyo === 2) { g.moveTo(0, 12); g.lineTo(-20, 42); g.lineTo(20, 42); g.closePath(); g.stroke(); }
+        else if (n.apoyo === 3) { g.moveTo(0, 10); g.lineTo(0, 24); g.moveTo(-26, 24); g.lineTo(26, 24); for (let i = -26; i <= 12; i += 12) { g.moveTo(i + 12, 24); g.lineTo(i, 38); } g.stroke(); }
+        g.restore();
+        g.fillStyle = '#d00000'; g.beginPath(); g.arc(p.x, p.y, 10, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#000'; g.font = 'bold 24px sans-serif'; g.textAlign = 'center';
+        g.fillText(n.label, p.x, p.y - 22);
+    });
+    return c.toDataURL('image/png');
+}
+
+function tablaDefiniciones(d) {
+    const es = d.franjaUnitaria === 'SI';
+    let h = '<h3 class="sub">2.1 Definiciones geométricas</h3>' + KV([
+        ['Franja unitaria', d.franjaUnitaria + (es ? ' (losa en una dirección)' : ' (viga)')],
+        ['Base b', fmt(d.b) + ' m'], ['Recubrimiento', esc(d.recubrimientoTipo)], ['Recubrimiento adoptado', fmt(d.recubrimientoMm, 1) + ' mm']]);
+    h += '<h3 class="sub">2.2 Definiciones mecánicas</h3>' + KV([
+        ['Esfuerzo de fluencia fy', esc(d.fyTexto) + ' (' + fmt(d.fyPa / 1e6, 2) + ' MPa)'],
+        ['Resistencia del concreto f’c', esc(d.fcTexto) + ' (' + fmt(d.fcPa / 1e6, 2) + ' MPa)'],
+        ['Módulo de elasticidad E (acero)', esc(d.ETexto) + ' (' + fmt(d.EPa / 1e9, 1) + ' GPa)']]);
+    h += '<h3 class="sub">2.3 Definición de cargas</h3>' + KV([
+        ['Peso propio de la estructura', d.pesoPropio ? 'SI' : 'NO'],
+        ['Uso general', esc(d.usoGeneral)], ['Ocupación específica', esc(d.usoEspecifico)],
+        ['Fachada y particiones (W<sub>pa</sub>)', (d.incFachada ? 'Incluida · ' : 'No incluida · ') + fmt(d.wpa) + ' kN/m²'],
+        ['Afinado de piso y cubierta (W<sub>cu</sub>)', (d.incAfinado ? 'Incluido · ' : 'No incluido · ') + fmt(d.wcu) + ' kN/m²']]);
+    const asig = g => g.map(x => x.viga === 'Todas' ? 'Todas las vigas' : esc(x.viga)).filter((v, i, a) => a.indexOf(v) === i).join(', ');
+    h += '<div class="keep"><h4>Cargas vivas</h4>' + ((d.vivas || []).length ? TB(['Descripción', 'Valor (kN/m²)', 'Asignada a'], agr(d.vivas, v => limpia(v.nombre) + '|' + v.valor).map(g => [esc(limpia(g[0].nombre)), fmt(g[0].valor), asig(g)])) : '<p class="nota">No se definieron cargas vivas.</p>') + '</div>';
+    h += '<div class="keep"><h4>Cargas extras personalizadas</h4>' + ((d.extras || []).length ? TB(['Nombre', 'Valor', 'Tipo', 'Asignada a'], agr(d.extras, e => [e.nombre, e.valorTexto, e.tipo].join('|')).map(g => [esc(g[0].nombre), esc(g[0].valorTexto), g[0].tipo === 'muerta' ? 'Muerta' : 'Viva', g[0].tipo === 'muerta' ? 'Global' : asig(g)])) : '<p class="nota">No se definieron cargas extras.</p>') + '</div>';
+    return h;
+}
+
+function cargar() {
+    const est = leer('estructura_completa'), def = leer('definiciones_sistema'), res = leer('resultados_calculo');
+    const cont = document.getElementById('informe');
+    if (!est || !def || !res || !res.resultados) {
+        cont.innerHTML = '<div class="vacio"><h2>No hay datos para el informe</h2><p>Defina la estructura en el entorno gráfico y abra la pestaña de Cálculos.</p></div>'; return;
+    }
+    const R = res.resultados, fecha = new Date(res.generado || Date.now());
+    const apNom = ['Libre', 'Simple', 'Articulado', 'Empotrado'];
+    const byId = {}; est.nodos.forEach(n => byId[n.id] = n);
+    let h = '';
+
+    // ===== BLOQUE 1 (página 1): portada compacta + estructura =====
+    h += '<div class="portada"><h1>Informe de Diseño Estructural</h1><p>Hormigón armado · NSR-10 / ACI 318 · ' + fecha.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + fecha.toLocaleTimeString('es-CO') + '</p></div>';
+    h += '<h2 class="sec bloque">1. Estructura definida en el entorno gráfico</h2>';
+    const img = dibujarEstructura(est);
+    h += img ? '<div class="figura keep"><img src="' + img + '" alt="Estructura"><div class="pie">Figura 1. Geometría, apoyos y nomenclatura de vigas (N = nodo, V = viga).</div></div>' : '<p class="nota">No hay geometría definida.</p>';
+    h += '<div class="keep"><h4>Vigas (tramos)</h4>' + TB(['Viga', 'Nodo inicial', 'Nodo final', 'Longitud (m)'], est.vigas.map(v => { const a = byId[v.n1], b = byId[v.n2]; return [v.label, a ? a.label + ' (' + fmt(a.x) + ', ' + fmt(a.y) + ')' : '—', b ? b.label + ' (' + fmt(b.x) + ', ' + fmt(b.y) + ')' : '—', a && b ? fmt(Math.hypot(b.x - a.x, b.y - a.y)) : '—']; })) + '</div>';
+    h += '<div class="keep"><h4>Nodos y apoyos</h4>' + TB(['Nodo', 'X (m)', 'Y (m)', 'Condición de apoyo'], est.nodos.map(n => [n.label, fmt(n.x), fmt(n.y), apNom[n.apoyo] || '—'])) + '</div>';
+
+    // ===== BLOQUE 2 (página propia): definiciones del sistema =====
+    h += '<h2 class="sec bloque salto">2. Definiciones del sistema</h2>' + tablaDefiniciones(def);
+    const o = res.opciones || {};
+    h += '<div class="keep"><h3 class="sub">2.4 Opciones de cálculo</h3>' + KV([['Ancho tributario (solo vigas)', fmt(o.anchoTrib) + ' m'], ['Altura manual', o.hManual > 0 ? o.hManual + ' mm' : 'Automática'], ['Barra principal', o.barra === 'auto' ? 'Automática' : 'N.° ' + o.barra], ['Estribo (Øe)', o.estribo === '0' ? 'No incluido (Øe = 0)' : 'N.° ' + (o.estribo || '3')]]) + '</div>';
+
+    // ===== BLOQUE 3 (página propia): cálculos 3.01 – 3.05 =====
+    h += '<h2 class="sec bloque salto">3. Cálculos</h2>';
+    if (R.errores && R.errores.length) {
+        h += '<div class="estado-global no">No fue posible completar el cálculo:<ul>' + R.errores.map(e => '<li style="margin-left:5mm">' + esc(e) + '</li>').join('') + '</ul></div>';
+    } else {
+        const alcance = (R.verificaciones || []).filter(v => /Espesor|aplicabilidad|suficiente/.test(v.item));
+        const fallas = alcance.filter(v => !v.ok).length;
+        h += '<div class="estado-global ' + (fallas ? 'no' : 'ok') + ' keep">' + (fallas ? '✘ ' + fallas + ' verificación(es) no cumplen' : '✔ Predimensionamiento y flexión cumplen las verificaciones normativas') + ' (' + (alcance.length - fallas) + ' de ' + alcance.length + ')</div>';
+        const e = R.entrada;
+        h += '<div class="keep">' + KV([['Tipo de elemento', esc(R.modo)], ['Altura / espesor adoptado h', e.h + ' mm'], ['Peralte efectivo d', fmt(e.d, 2) + ' mm'], ['Base b', fmt(e.b, 0) + ' mm'], ['Barra de referencia', 'Ø' + e.barra.d + ' mm (' + e.barra.A + ' mm²)']]) + '</div>';
+        if (R.calculos) h += '<p class="nota">Se analizaron ' + R.calculos.secciones + ' sección(es) por momentos; el diseño a flexión se realizó únicamente para la sección con el momento último mayor y su refuerzo se adopta para todos los elementos.</p>';
+    }
+    if (R.advertencias && R.advertencias.length) h += '<div class="avisos keep"><b>Avisos y supuestos del cálculo:</b><ul>' + R.advertencias.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul></div>';
+    (R.pasos || []).filter(p => ['01', '02', '03', '04', '05'].includes(p.num)).forEach(p => {
+        const enc = '<h3 class="sub">3.' + p.num + ' ' + p.titulo + '</h3>';
+        h += p.html.includes('<div class="keep">') ? p.html.replace('<div class="keep">', () => '<div class="keep">' + enc) : '<div class="keep">' + enc + '</div>' + p.html;
+    });
+    h += '<p class="nota" style="margin-top:5mm">Informe generado utilizando una herramienta de diseño estructural, los datos deben ser revisados por un ingeniero estructural para su aprobación.</p>';
+    cont.innerHTML = h;
+    document.getElementById('estado').textContent = 'Datos del ' + fecha.toLocaleTimeString('es-CO');
+}
+
+function generarPDF() {
+    const el = document.getElementById('informe'), est = document.getElementById('estado');
+    if (typeof html2pdf === 'undefined') { est.textContent = 'No se pudo cargar html2pdf (sin conexión): se abre el diálogo de impresión → Guardar como PDF.'; window.print(); return; }
+    est.textContent = 'Generando PDF…';
+    const nombre = 'Informe_Diseno_Estructural_' + new Date().toISOString().slice(0, 10) + '.pdf';
+    html2pdf().set({
+        margin: [10, 10, 12, 10], filename: nombre, image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.keep', 'tr', 'h2', 'h3'] }
+    }).from(el).save().then(() => { est.textContent = 'PDF descargado: ' + nombre; }).catch(err => { est.textContent = 'Error al generar el PDF: ' + err.message; });
+}
+
+cargar();
+if (/[?&]auto=1/.test(location.search)) {
+    window.addEventListener('load', () => setTimeout(generarPDF, 600));
+}
+</script>
+</body>
+</html>
